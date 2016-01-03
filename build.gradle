@@ -1,0 +1,49 @@
+apply plugin: 'groovy'
+apply plugin: 'com.github.ben-manes.versions'
+
+dependencies {
+    compile 'com.squareup.okhttp3:okhttp:3.0.0-RC1'
+//    compile "org.ektorp:org.ektorp:$ektorpVersion"
+
+    compile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
+    compile "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
+    compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:$jacksonVersion"
+
+    compile "ch.qos.logback:logback-access:1.1.3"
+}
+
+sourceSets {
+    integrationTest {
+        compileClasspath += main.output + test.output
+        runtimeClasspath += main.output + test.output
+
+        groovy {
+            srcDir 'src/integrationTest/groovy'
+        }
+        resources {
+            srcDir 'src/integrationTest/resources'
+        }
+    }
+}
+
+//[npm_run_pouchdb].each { it.dependsOn(npmInstall) }
+
+task integrationTest(type: Test) {
+//    dependsOn npm_run_pouchdb
+    testClassesDir = sourceSets.integrationTest.output.classesDir
+    classpath = sourceSets.integrationTest.runtimeClasspath
+}
+
+dependencies {
+    integrationTestCompile sourceSets.main.output
+    integrationTestCompile configurations.testCompile
+    integrationTestCompile sourceSets.test.output
+    integrationTestRuntime configurations.testRuntime
+}
+
+check.dependsOn integrationTest
+integrationTest.shouldRunAfter test
+
+tasks.withType(Test) {
+    systemProperties = System.properties
+}
