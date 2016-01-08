@@ -1,8 +1,8 @@
 package de.gesellix.couchdb
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import groovy.json.JsonSlurper
 import groovy.util.logging.Slf4j
+import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
@@ -48,7 +48,7 @@ class CouchDBClient {
             throw new IOException(response.body().string())
         }
 
-        def result = new JsonSlurper().parse(response.body().byteStream())
+        def result = objectMapper.readValue(response.body().byteStream(), Map)
         result.rows.collect { row -> includeDocs ? row.doc : row }
     }
 
@@ -69,7 +69,7 @@ class CouchDBClient {
             throw new IOException(response.body().string())
         }
 
-        def result = new JsonSlurper().parse(response.body().byteStream())
+        def result = objectMapper.readValue(response.body().byteStream(), Map)
         result.rows.collect { row -> includeDocs ? row.doc : row }
     }
 
@@ -103,11 +103,14 @@ class CouchDBClient {
                     .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}")
                     .post(body)
         }
+        if (couchdbUsername && couchdbPassword) {
+            builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+        }
         def request = builder.build()
 
         def response = client.newCall(request).execute()
 
-        def result = new JsonSlurper().parse(response.body().byteStream())
+        def result = objectMapper.readValue(response.body().byteStream(), Map)
         if (!result.ok) {
             log.error("error {}", result)
             throw new IllegalStateException("error creating document")
@@ -140,11 +143,14 @@ class CouchDBClient {
         builder = builder
                 .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}")
                 .put(body)
+        if (couchdbUsername && couchdbPassword) {
+            builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+        }
         def request = builder.build()
 
         def response = client.newCall(request).execute()
 
-        def result = new JsonSlurper().parse(response.body().byteStream())
+        def result = objectMapper.readValue(response.body().byteStream(), Map)
         if (!result.ok) {
             log.error("error {}", result)
             throw new IllegalStateException("error updating document")
@@ -153,5 +159,138 @@ class CouchDBClient {
         def updatedDocument = objectMapper.readValue(documentAsJson, Map)
         updatedDocument['_rev'] = result.rev
         return updatedDocument
+    }
+
+    def createDb(String db) {
+        def builder = new Request.Builder()
+                .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}")
+                .put(RequestBody.create(parse("application/json"), ''))
+        if (couchdbUsername && couchdbPassword) {
+            builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+        }
+        def request = builder.build()
+
+        def response = client.newCall(request).execute()
+
+        def result = objectMapper.readValue(response.body().byteStream(), Map)
+        if (!result.ok) {
+            log.error("error {}", result)
+            throw new IllegalStateException("error creating database")
+        }
+        return result
+    }
+
+    def deleteDb(String db) {
+        def builder = new Request.Builder()
+                .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}")
+                .delete()
+        if (couchdbUsername && couchdbPassword) {
+            builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+        }
+        def request = builder.build()
+
+        def response = client.newCall(request).execute()
+
+        def result = objectMapper.readValue(response.body().byteStream(), Map)
+        if (!result.ok) {
+            log.error("error {}", result)
+            throw new IllegalStateException("error deleting database")
+        }
+        return result
+    }
+
+    def createFindByPropertyView(String db, String propertyName) {
+        String designDocId = "_design/${db.capitalize()}"
+        def newDesignDoc = [
+                _id     : designDocId,
+                language: "javascript",
+                views   : [:]]
+
+//        def findAllView = "function(doc) { emit(null, doc._id) }"
+//        newDesignDoc.views["all"] = [
+//                map: findAllView]
+
+        String findByPropertyView = "function(doc) { if (doc.${propertyName}) { emit(doc.${propertyName}, doc._id) } }"
+        newDesignDoc.views["by_${propertyName}"] = [
+                map: findByPropertyView]
+
+        def designDocExists = contains(db, designDocId)
+        if (designDocExists) {
+            def currentDesignDoc = get(db, designDocId)
+            def mergedDesignDoc = merge(currentDesignDoc, newDesignDoc)
+            if (mergedDesignDoc != currentDesignDoc) {
+                update(db, mergedDesignDoc)
+            }
+            return currentDesignDoc
+        } else {
+            return update(db, newDesignDoc)
+        }
+    }
+
+    def contains(String db, String docId) {
+        def builder = new Request.Builder()
+                .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}")
+                .head()
+        if (couchdbUsername && couchdbPassword) {
+            builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+        }
+        def request = builder.build()
+
+        def response = client.newCall(request).execute()
+
+        if (!response.successful) {
+            if (response.code() == 404) {
+                return false
+            } else {
+                log.error("error {}", response.message())
+                throw new IllegalStateException("could not check for doc existence")
+            }
+        } else {
+            return true
+        }
+    }
+
+    def get(String db, String docId) {
+        def builder = new Request.Builder()
+                .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}")
+                .get()
+        if (couchdbUsername && couchdbPassword) {
+            builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+        }
+        def request = builder.build()
+
+        def response = client.newCall(request).execute()
+
+        if (!response.successful) {
+            log.error("error getting document({}): {}/{}", docId, response.code(), response.message())
+            throw new IllegalStateException("could not get doc with id '${docId}'")
+        } else {
+            return objectMapper.readValue(response.body().byteStream(), Map)
+        }
+    }
+
+    def delete(String db, String docId, String rev) {
+        def builder = new Request.Builder()
+                .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}?rev=${rev}")
+                .delete()
+        if (couchdbUsername && couchdbPassword) {
+            builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+        }
+        def request = builder.build()
+
+        def response = client.newCall(request).execute()
+
+        if (!response.successful) {
+            log.error("error deleting doc{ _id:{}, _rev:{} }: {}/{}", docId, rev, response.code(), response.message())
+            throw new IllegalStateException("could not delete doc with id/rev '${docId}'/'${rev}'")
+        } else {
+            return objectMapper.readValue(response.body().byteStream(), Map)
+        }
+    }
+
+    static def merge(def currentDoc, def changedDoc) {
+        def mergedDoc = currentDoc + [:]
+        mergedDoc.views = (currentDoc.views ?: [:]) + (changedDoc.views ?: [:])
+        return mergedDoc
     }
 }

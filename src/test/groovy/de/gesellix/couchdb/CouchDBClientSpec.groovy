@@ -17,7 +17,9 @@ class CouchDBClientSpec extends Specification {
                 client: new OkHttpClient(),
                 objectMapper: newObjectMapper(),
                 couchdbHost: "192.168.99.100",
-                couchdbPort: 5984)
+                couchdbPort: 5984,
+                couchdbUsername: "foo",
+                couchdbPassword: "bar")
     }
 
     ObjectMapper newObjectMapper() {
@@ -102,5 +104,57 @@ class CouchDBClientSpec extends Specification {
         today.minusDays(1).isBefore(new LocalDate(result.dateUpdated as String))
         and:
         today.plusDays(1).isAfter(new LocalDate(result.dateUpdated as String))
+    }
+
+    def "get doc"() {
+        given:
+        def existingDoc = client.create("test-db", [:])
+
+        when:
+        def result = client.get("test-db", existingDoc._id as String)
+
+        then:
+        result._id == existingDoc._id
+        and:
+        result._rev.startsWith("1-")
+    }
+
+    def "delete doc"() {
+        given:
+        def existingDoc = client.create("test-db", [:])
+        def created = client.contains("test-db", existingDoc._id as String)
+
+        when:
+        def result = client.delete("test-db", existingDoc._id as String, existingDoc._rev as String)
+
+        then:
+        created
+        and:
+        result.ok == true
+        and:
+        !client.contains("test-db", existingDoc._id as String)
+    }
+
+    def "create and delete a database"() {
+        when:
+        def result = client.createDb("test-db-delete-me")
+
+        then:
+        result == [ok: true]
+
+        cleanup:
+        client.deleteDb("test-db-delete-me")
+    }
+
+    def "create view"() {
+        when:
+        def result = client.createFindByPropertyView("test-db", "a-property")
+
+        then:
+        result._id == "_design/${"test-db".capitalize()}"
+        and:
+        result.views["by_a-property"].map == "function(doc) { if (doc.a-property) { emit(doc.a-property, doc._id) } }"
+        and:
+        !result.views["by_a-property"].reduce
     }
 }
