@@ -73,6 +73,32 @@ class CouchDBClient {
         result.rows.collect { row -> includeDocs ? row.doc : row }
     }
 
+    def getAllDocs(String db, boolean includeDocs = true, boolean includeDesignDoc = false) {
+        def builder = new Request.Builder()
+                .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}" +
+                "/_all_docs" +
+                "?include_docs=${includeDocs}")
+                .get()
+        if (couchdbUsername && couchdbPassword) {
+            builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+        }
+        def request = builder.build()
+
+        def response = client.newCall(request).execute()
+
+        if (!response.successful) {
+            log.error("error getting all docs: {}/{}", response.code(), response.message())
+            throw new IllegalStateException("could not get all docs with")
+        } else {
+            def allDocs = objectMapper.readValue(response.body().byteStream(), Map)
+            allDocs = allDocs.rows.collect { row -> includeDocs ? row.doc : row }
+            if (!includeDesignDoc) {
+                allDocs = allDocs.grep { !it._id?.startsWith("_design/") && !it.id?.startsWith("_design/") }
+            }
+            return allDocs
+        }
+    }
+
     def create(String db, def document) {
         if (document == null) {
             throw new IllegalArgumentException("document may not be null")
@@ -159,6 +185,29 @@ class CouchDBClient {
         def updatedDocument = objectMapper.readValue(documentAsJson, Map)
         updatedDocument['_rev'] = result.rev
         return updatedDocument
+    }
+
+    def containsDb(String db) {
+        def builder = new Request.Builder()
+                .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}")
+                .head()
+        if (couchdbUsername && couchdbPassword) {
+            builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+        }
+        def request = builder.build()
+
+        def response = client.newCall(request).execute()
+
+        if (!response.successful) {
+            if (response.code() == 404) {
+                return false
+            } else {
+                log.error("error {}", response.message())
+                throw new IllegalStateException("could not check for database existence")
+            }
+        } else {
+            return true
+        }
     }
 
     def createDb(String db) {

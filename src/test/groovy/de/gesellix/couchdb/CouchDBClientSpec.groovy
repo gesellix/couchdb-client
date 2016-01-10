@@ -146,6 +146,29 @@ class CouchDBClientSpec extends Specification {
         client.deleteDb("test-db-delete-me")
     }
 
+    def "check for non-existing database"() {
+        when:
+        def exists = client.containsDb("test-db-${UUID.randomUUID()}")
+
+        then:
+        !exists
+    }
+
+    def "check for existing database"() {
+        given:
+        def dbName = "test-db-${UUID.randomUUID()}"
+        client.createDb(dbName)
+
+        when:
+        def exists = client.containsDb(dbName)
+
+        then:
+        exists
+
+        cleanup:
+        client.deleteDb(dbName)
+    }
+
     def "create view"() {
         when:
         def result = client.createFindByPropertyView("test-db", "a-property")
