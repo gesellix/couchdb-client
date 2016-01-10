@@ -6,6 +6,7 @@ import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.internal.Util
 import org.joda.time.LocalDate
 
 import static java.nio.charset.StandardCharsets.UTF_8
@@ -48,7 +49,7 @@ class CouchDBClient {
             throw new IOException(response.body().string())
         }
 
-        def result = objectMapper.readValue(response.body().byteStream(), Map)
+        def result = consume(response.body().byteStream())
         result.rows.collect { row -> includeDocs ? row.doc : row }
     }
 
@@ -69,7 +70,7 @@ class CouchDBClient {
             throw new IOException(response.body().string())
         }
 
-        def result = objectMapper.readValue(response.body().byteStream(), Map)
+        def result = consume(response.body().byteStream())
         result.rows.collect { row -> includeDocs ? row.doc : row }
     }
 
@@ -90,7 +91,7 @@ class CouchDBClient {
             log.error("error getting all docs: {}/{}", response.code(), response.message())
             throw new IllegalStateException("could not get all docs with")
         } else {
-            def allDocs = objectMapper.readValue(response.body().byteStream(), Map)
+            def allDocs = consume(response.body().byteStream())
             allDocs = allDocs.rows.collect { row -> includeDocs ? row.doc : row }
             if (!includeDesignDoc) {
                 allDocs = allDocs.grep { !it._id?.startsWith("_design/") && !it.id?.startsWith("_design/") }
@@ -136,7 +137,7 @@ class CouchDBClient {
 
         def response = client.newCall(request).execute()
 
-        def result = objectMapper.readValue(response.body().byteStream(), Map)
+        def result = consume(response.body().byteStream())
         if (!result.ok) {
             log.error("error {}", result)
             throw new IllegalStateException("error creating document")
@@ -176,7 +177,7 @@ class CouchDBClient {
 
         def response = client.newCall(request).execute()
 
-        def result = objectMapper.readValue(response.body().byteStream(), Map)
+        def result = consume(response.body().byteStream())
         if (!result.ok) {
             log.error("error {}", result)
             throw new IllegalStateException("error updating document")
@@ -221,7 +222,7 @@ class CouchDBClient {
 
         def response = client.newCall(request).execute()
 
-        def result = objectMapper.readValue(response.body().byteStream(), Map)
+        def result = consume(response.body().byteStream())
         if (!result.ok) {
             log.error("error {}", result)
             throw new IllegalStateException("error creating database")
@@ -240,7 +241,7 @@ class CouchDBClient {
 
         def response = client.newCall(request).execute()
 
-        def result = objectMapper.readValue(response.body().byteStream(), Map)
+        def result = consume(response.body().byteStream())
         if (!result.ok) {
             log.error("error {}", result)
             throw new IllegalStateException("error deleting database")
@@ -314,7 +315,7 @@ class CouchDBClient {
             log.error("error getting document({}): {}/{}", docId, response.code(), response.message())
             throw new IllegalStateException("could not get doc with id '${docId}'")
         } else {
-            return objectMapper.readValue(response.body().byteStream(), Map)
+            return consume(response.body().byteStream())
         }
     }
 
@@ -333,7 +334,8 @@ class CouchDBClient {
             log.error("error deleting doc{ _id:{}, _rev:{} }: {}/{}", docId, rev, response.code(), response.message())
             throw new IllegalStateException("could not delete doc with id/rev '${docId}'/'${rev}'")
         } else {
-            return objectMapper.readValue(response.body().byteStream(), Map)
+            def result = consume(response.body().byteStream())
+            return result
         }
     }
 
@@ -341,5 +343,11 @@ class CouchDBClient {
         def mergedDoc = currentDoc + [:]
         mergedDoc.views = (currentDoc.views ?: [:]) + (changedDoc.views ?: [:])
         return mergedDoc
+    }
+
+    def consume(InputStream stream) {
+        def result = objectMapper.readValue(stream, Map)
+        Util.closeQuietly(stream)
+        return result
     }
 }
