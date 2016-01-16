@@ -15,7 +15,7 @@ dependencies {
     testCompile 'com.jayway.jsonpath:json-path:2.1.0'
     testCompile 'com.jayway.jsonpath:json-path-assert:2.1.0'
 
-    compile 'com.squareup.okhttp3:okhttp:3.0.0-RC1'
+    compile 'com.squareup.okhttp3:okhttp:3.0.1'
 //    compile "org.ektorp:org.ektorp:$ektorpVersion"
 
     compile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
