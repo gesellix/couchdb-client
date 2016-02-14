@@ -16,10 +16,10 @@ class CouchDBClientSpec extends Specification {
         client = new CouchDBClient(
                 client: new OkHttpClient(),
                 objectMapper: newObjectMapper(),
-                couchdbHost: "192.168.99.100",
-                couchdbPort: 5984,
-                couchdbUsername: "foo",
-                couchdbPassword: "bar")
+                couchdbHost: System.env['couchdb.host'] ?: "127.0.0.1",
+                couchdbPort: System.env['couchdb.port'] ?: "5984" as int,
+                couchdbUsername: System.env['couchdb.username'] ?: null,
+                couchdbPassword: System.env['couchdb.password'] ?: null)
     }
 
     ObjectMapper newObjectMapper() {
