@@ -4,15 +4,21 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.joda.JodaModule
 import okhttp3.OkHttpClient
 import org.joda.time.LocalDate
+import spock.lang.Shared
 import spock.lang.Specification
+import spock.lang.Stepwise
 
 import static com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS
 
+@Stepwise
 class CouchDBClientSpec extends Specification {
 
+    @Shared
     CouchDBClient client
+    @Shared
+    String database
 
-    def setup() {
+    def setupSpec() {
         client = new CouchDBClient(
                 client: new OkHttpClient(),
                 objectMapper: newObjectMapper(),
@@ -20,6 +26,11 @@ class CouchDBClientSpec extends Specification {
                 couchdbPort: System.env['couchdb.port'] ?: "5984" as int,
                 couchdbUsername: System.env['couchdb.username'] ?: null,
                 couchdbPassword: System.env['couchdb.password'] ?: null)
+        database = "test-db-${UUID.randomUUID()}"
+    }
+
+    def cleanupSpec() {
+        !client.containsDb(database) || client.deleteDb(database)
     }
 
     ObjectMapper newObjectMapper() {
@@ -29,20 +40,34 @@ class CouchDBClientSpec extends Specification {
         objectMapper
     }
 
-    def "query view with single key"() {
-        when:
-        def result = client.query("topicProUser", "by_username", "tobias@gesellix.de")
-
-        then:
-        result.first()._id == "gesellix"
+    // TODO implement a real connectivity check here
+    def "ensure connectivity"() {
+        expect:
+        !client.containsDb(database)
     }
 
-    def "query view with multiple keys"() {
+    def "verify non-existing test database"() {
+        expect:
+        !client.containsDb(database)
+    }
+
+    def "create test database"() {
         when:
-        def result = client.query("themen", "byMedienId", ["3", "unknown-id"])
+        client.createDb(database)
+        then:
+        client.containsDb(database)
+    }
+
+    def "create view"() {
+        when:
+        def result = client.createFindByPropertyView(database, "a-property")
 
         then:
-        result.unique { thema -> thema.medienId }.medienId == ["3"]
+        result._id == "_design/${database.capitalize()}"
+        and:
+        result.views["by_a-property"].map == "function(doc) { if (doc['a-property']) { emit(doc['a-property'], doc._id) } }"
+        and:
+        !result.views["by_a-property"].reduce
     }
 
     def "create doc with existing _id"() {
@@ -51,7 +76,7 @@ class CouchDBClientSpec extends Specification {
         def today = new LocalDate()
 
         when:
-        def result = client.create("test-db", [_id: docId])
+        def result = client.create(database, [_id: docId])
 
         then:
         result._id == docId
@@ -70,7 +95,7 @@ class CouchDBClientSpec extends Specification {
         def today = new LocalDate()
 
         when:
-        def result = client.create("test-db", [:])
+        def result = client.create(database, [:])
 
         then:
         result._id =~ "\\w+"
@@ -87,10 +112,10 @@ class CouchDBClientSpec extends Specification {
     def "update doc"() {
         given:
         def today = new LocalDate()
-        def existingDoc = client.create("test-db", [:])
+        def existingDoc = client.create(database, [:])
 
         when:
-        def result = client.update("test-db", [_id: existingDoc._id, _rev: existingDoc._rev])
+        def result = client.update(database, [_id: existingDoc._id, _rev: existingDoc._rev])
 
         then:
         result._id =~ "\\w+"
@@ -108,10 +133,10 @@ class CouchDBClientSpec extends Specification {
 
     def "get doc"() {
         given:
-        def existingDoc = client.create("test-db", [:])
+        def existingDoc = client.create(database, [:])
 
         when:
-        def result = client.get("test-db", existingDoc._id as String)
+        def result = client.get(database, existingDoc._id as String)
 
         then:
         result._id == existingDoc._id
@@ -121,63 +146,66 @@ class CouchDBClientSpec extends Specification {
 
     def "delete doc"() {
         given:
-        def existingDoc = client.create("test-db", [:])
-        def created = client.contains("test-db", existingDoc._id as String)
+        def existingDoc = client.create(database, [:])
+        def created = client.contains(database, existingDoc._id as String)
 
         when:
-        def result = client.delete("test-db", existingDoc._id as String, existingDoc._rev as String)
+        def result = client.delete(database, existingDoc._id as String, existingDoc._rev as String)
 
         then:
         created
         and:
         result.ok == true
         and:
-        !client.contains("test-db", existingDoc._id as String)
+        !client.contains(database, existingDoc._id as String)
     }
 
-    def "create and delete a database"() {
-        when:
-        def result = client.createDb("test-db-delete-me")
-
-        then:
-        result == [ok: true]
-
-        cleanup:
-        client.deleteDb("test-db-delete-me")
-    }
-
-    def "check for non-existing database"() {
-        when:
-        def exists = client.containsDb("test-db-${UUID.randomUUID()}")
-
-        then:
-        !exists
-    }
-
-    def "check for existing database"() {
+    def "create some documents"() {
         given:
-        def dbName = "test-db-${UUID.randomUUID()}"
-        client.createDb(dbName)
+        def docId1 = "test-id/${UUID.randomUUID()}".toString()
+        def docId2 = "test-id/${UUID.randomUUID()}".toString()
 
         when:
-        def exists = client.containsDb(dbName)
+        client.create(database, [_id: docId1, 'a-property': "create some documents-1"])
+        and:
+        client.create(database, [_id: docId2, 'a-property': "create some documents-2"])
 
         then:
-        exists
-
-        cleanup:
-        client.deleteDb(dbName)
+        client.get(database, docId1).'a-property' == "create some documents-1"
+        and:
+        client.get(database, docId2).'a-property' == "create some documents-2"
     }
 
-    def "create view"() {
+    def "query view with single key"() {
+        given:
+        def docId = "test-id/${UUID.randomUUID()}".toString()
+        client.create(database, [_id: docId, 'a-property': "query view with single key-1"])
+
         when:
-        def result = client.createFindByPropertyView("test-db", "a-property")
+        def result = client.query(database, "by_a-property", "query view with single key-1")
 
         then:
-        result._id == "_design/${"test-db".capitalize()}"
-        and:
-        result.views["by_a-property"].map == "function(doc) { if (doc.a-property) { emit(doc.a-property, doc._id) } }"
-        and:
-        !result.views["by_a-property"].reduce
+        result.first()._id == docId
+    }
+
+    def "query view with multiple keys"() {
+        given:
+        def docId1 = "test-id/${UUID.randomUUID()}".toString()
+        client.create(database, [_id: docId1, 'a-property': "a-value-1"])
+        def docId2 = "test-id/${UUID.randomUUID()}".toString()
+        client.create(database, [_id: docId2, 'a-property': "a-value-2"])
+
+        when:
+        def result = client.query(database, "by_a-property", ["a-value-1", "unknown"])
+
+        then:
+        result._id == [docId1]
+    }
+
+    def "delete test database"() {
+        when:
+        client.deleteDb(database)
+        then:
+        !client.containsDb(database)
     }
 }

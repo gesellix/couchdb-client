@@ -119,9 +119,7 @@ class CouchDBClient {
         def builder = new Request.Builder()
         if (document['_id']) {
             String docId = document['_id']
-            if (!docId.startsWith('_')) {
-                docId = URLEncoder.encode(docId, UTF_8.toString())
-            }
+            docId = sanitizeDocId(docId)
             builder = builder
                     .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}")
                     .put(body)
@@ -164,9 +162,7 @@ class CouchDBClient {
 
         def builder = new Request.Builder()
         String docId = document['_id']
-        if (!docId.startsWith('_')) {
-            docId = URLEncoder.encode(docId, UTF_8.toString())
-        }
+        docId = sanitizeDocId(docId)
         builder = builder
                 .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}")
                 .put(body)
@@ -260,7 +256,7 @@ class CouchDBClient {
 //        newDesignDoc.views["all"] = [
 //                map: findAllView]
 
-        String findByPropertyView = "function(doc) { if (doc.${propertyName}) { emit(doc.${propertyName}, doc._id) } }"
+        String findByPropertyView = "function(doc) { if (doc['${propertyName}']) { emit(doc['${propertyName}'], doc._id) } }"
         newDesignDoc.views["by_${propertyName}"] = [
                 map: findByPropertyView]
 
@@ -278,6 +274,7 @@ class CouchDBClient {
     }
 
     def contains(String db, String docId) {
+        docId = sanitizeDocId(docId)
         def builder = new Request.Builder()
                 .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}")
                 .head()
@@ -301,6 +298,7 @@ class CouchDBClient {
     }
 
     def get(String db, String docId) {
+        docId = sanitizeDocId(docId)
         def builder = new Request.Builder()
                 .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}")
                 .get()
@@ -320,6 +318,7 @@ class CouchDBClient {
     }
 
     def delete(String db, String docId, String rev) {
+        docId = sanitizeDocId(docId)
         def builder = new Request.Builder()
                 .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}?rev=${rev}")
                 .delete()
@@ -349,5 +348,12 @@ class CouchDBClient {
         def result = objectMapper.readValue(stream, Map)
         Util.closeQuietly(stream)
         return result
+    }
+
+    static def sanitizeDocId(String docId) {
+        if (!docId.startsWith('_')) {
+            docId = URLEncoder.encode(docId, UTF_8.toString())
+        }
+        docId
     }
 }
