@@ -8,7 +8,7 @@ dependencies {
 
     compile "org.slf4j:slf4j-api:$slf4jVersion"
     runtime "org.slf4j:log4j-over-slf4j:$slf4jVersion"
-    runtime 'ch.qos.logback:logback-classic:1.1.4'
+    runtime "ch.qos.logback:logback-classic:$logbackVersion"
 
     testCompile "org.spockframework:spock-core:$spockVersion"
     testCompile 'cglib:cglib-nodep:3.2.0'
