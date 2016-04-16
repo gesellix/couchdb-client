@@ -11,9 +11,9 @@ dependencies {
     runtime "ch.qos.logback:logback-classic:$logbackVersion"
 
     testCompile "org.spockframework:spock-core:$spockVersion"
-    testCompile 'cglib:cglib-nodep:3.2.0'
-    testCompile 'com.jayway.jsonpath:json-path:2.1.0'
-    testCompile 'com.jayway.jsonpath:json-path-assert:2.1.0'
+    testCompile 'cglib:cglib-nodep:3.2.2'
+    testCompile 'com.jayway.jsonpath:json-path:2.2.0'
+    testCompile 'com.jayway.jsonpath:json-path-assert:2.2.0'
 
     compile 'com.squareup.okhttp3:okhttp:3.2.0'
 //    compile "org.ektorp:org.ektorp:$ektorpVersion"
