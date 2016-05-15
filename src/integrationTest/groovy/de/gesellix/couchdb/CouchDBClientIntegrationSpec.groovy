@@ -11,7 +11,7 @@ import spock.lang.Stepwise
 import static com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS
 
 @Stepwise
-class CouchDBClientSpec extends Specification {
+class CouchDBClientIntegrationSpec extends Specification {
 
     @Shared
     CouchDBClient client
