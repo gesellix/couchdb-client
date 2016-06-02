@@ -12,6 +12,7 @@ buildscript {
         //classpath 'org.ajoberstar:gradle-git:0.11.2'
         classpath 'org.ajoberstar:grgit:1.4.1'
         classpath 'com.github.ben-manes:gradle-versions-plugin:0.12.0'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
     }
 }
 
@@ -28,6 +29,7 @@ ext {
         def localDateTime = new SimpleDateFormat('yyyy-MM-dd\'T\'HH-mm-ss').format(new Date())
         return "${localDate}_${commitHash}".toString()
     }()
+    bintrayDryRun = false
 
     groovyVersion = '2.4.6'
     jacksonVersion = '2.7.2'
@@ -40,9 +42,13 @@ ext {
 apply plugin: 'maven'
 apply plugin: 'groovy'
 apply plugin: 'com.github.ben-manes.versions'
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.bintray'
 
 sourceCompatibility = langLevel
 targetCompatibility = langLevel
+
+group = 'de.gesellix'
 
 repositories {
     mavenLocal()
@@ -118,10 +124,7 @@ sourceSets {
     }
 }
 
-//[npm_run_pouchdb].each { it.dependsOn(npmInstall) }
-
 task integrationTest(type: Test) {
-//    dependsOn npm_run_pouchdb
     testClassesDir = sourceSets.integrationTest.output.classesDir
     classpath = sourceSets.integrationTest.runtimeClasspath
 }
@@ -139,6 +142,45 @@ integrationTest.shouldRunAfter test
 tasks.withType(Test) {
     systemProperties = System.properties
 }
+
+task sourcesJar(type: Jar) {
+    dependsOn classes
+    classifier 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives sourcesJar
+}
+
+publishing {
+    publications {
+        couchdbClient(MavenPublication) {
+            version artifactVersion
+            from components.java
+            artifact sourcesJar
+        }
+    }
+}
+
+bintray {
+    user = System.env.BINTRAY_USER ?: project["bintray.user"]
+    key = System.env.BINTRAY_API_KEY ?: project["bintray.key"]
+    publications = ['couchdbClient']
+    pkg {
+        repo = 'couchdb'
+        name = 'couchdb-client'
+        desc = 'A CouchDB client written in Groovy'
+        licenses = ['Apache-2.0']
+        labels = ['couchdb', 'client']
+        version = [
+                name: artifactVersion
+        ]
+        vcsUrl = 'https://github.com/gesellix/couchdb-client'
+    }
+    dryRun = bintrayDryRun
+}
+bintrayUpload.dependsOn build
 
 task wrapper(type: Wrapper) {
     gradleVersion = '2.12'
