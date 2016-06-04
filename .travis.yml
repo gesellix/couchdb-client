@@ -10,3 +10,5 @@ env:
 branches:
   only:
     - master
+after_success:
+  - ./gradlew bintrayUpload -x check --info
