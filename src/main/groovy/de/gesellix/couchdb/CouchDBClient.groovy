@@ -32,6 +32,29 @@ class CouchDBClient {
         this.couchdbPort = 5984
     }
 
+    def healthy() {
+        def builder = new Request.Builder()
+                .url("http://${couchdbHost}:${couchdbPort}")
+                .get()
+        def request = builder.build()
+
+        def response = client.newCall(request).execute()
+
+        if (!response.successful) {
+            if (response.code() == 404) {
+                response.body().close()
+                return false
+            } else {
+                log.error("error {}", response.message())
+                response.body().close()
+                throw new IllegalStateException("could not check for database existence")
+            }
+        } else {
+            log.info(response.body().string())
+            return true
+        }
+    }
+
     def <R> R query(String db, String viewName, String key, boolean includeDocs = true) {
         def encodedKey = objectMapper.writeValueAsString(key)
 
@@ -245,20 +268,33 @@ class CouchDBClient {
         return result
     }
 
+    def createFindAllDocsView(String db) {
+        def findAll = "function(doc) { emit(null, doc._id) }"
+        return createView(db, "all", findAll, null)
+    }
+
     def createFindByPropertyView(String db, String propertyName) {
+        String findByProperty = "function(doc) { if (doc['${propertyName}']) { emit(doc['${propertyName}'], doc._id) } }"
+        return createView(db, "by_${propertyName}", findByProperty, null)
+    }
+
+    def createView(String db, String viewName, String mapFunction, String reduceFunction) {
+        def view = [:]
+        if (mapFunction) {
+            view['map'] = mapFunction
+        }
+        if (reduceFunction) {
+            view['reduce'] = reduceFunction
+        }
+
         String designDocId = "_design/${db.capitalize()}"
         def newDesignDoc = [
                 _id     : designDocId,
                 language: "javascript",
-                views   : [:]]
-
-//        def findAllView = "function(doc) { emit(null, doc._id) }"
-//        newDesignDoc.views["all"] = [
-//                map: findAllView]
-
-        String findByPropertyView = "function(doc) { if (doc['${propertyName}']) { emit(doc['${propertyName}'], doc._id) } }"
-        newDesignDoc.views["by_${propertyName}"] = [
-                map: findByPropertyView]
+                views   : [
+                        (viewName): view
+                ]
+        ]
 
         def designDocExists = contains(db, designDocId)
         if (designDocExists) {
