@@ -40,10 +40,9 @@ class CouchDBClientIntegrationSpec extends Specification {
         objectMapper
     }
 
-    // TODO implement a real connectivity check here
     def "ensure connectivity"() {
         expect:
-        !client.containsDb(database)
+        client.healthy()
     }
 
     def "verify non-existing test database"() {
