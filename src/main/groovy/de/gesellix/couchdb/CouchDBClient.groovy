@@ -69,6 +69,7 @@ class CouchDBClient {
 
         def response = client.newCall(request).execute()
         if (!response.successful) {
+            log.error("request failed: {}", request)
             throw new IOException(response.body().string())
         }
 
@@ -90,6 +91,7 @@ class CouchDBClient {
 
         def response = client.newCall(request).execute()
         if (!response.successful) {
+            log.error("request failed: {}", request)
             throw new IOException(response.body().string())
         }
 
