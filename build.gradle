@@ -11,8 +11,8 @@ buildscript {
     dependencies {
         //classpath 'org.ajoberstar:gradle-git:0.11.2'
         classpath 'org.ajoberstar:grgit:1.7.0'
-        classpath 'com.github.ben-manes:gradle-versions-plugin:0.12.0'
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
+        classpath 'com.github.ben-manes:gradle-versions-plugin:0.13.0'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.1'
     }
 }
 
@@ -31,7 +31,7 @@ ext {
     }()
     bintrayDryRun = false
 
-    groovyVersion = '2.4.6'
+    groovyVersion = '2.4.7'
     jacksonVersion = '2.7.4'
     logbackVersion = '1.1.7'
     metricsVersion = '3.0.2'
@@ -66,11 +66,11 @@ dependencies {
     runtime "ch.qos.logback:logback-classic:$logbackVersion"
 
     testCompile "org.spockframework:spock-core:$spockVersion"
-    testCompile 'cglib:cglib-nodep:3.2.2'
+    testCompile 'cglib:cglib-nodep:3.2.4'
     testCompile 'com.jayway.jsonpath:json-path:2.2.0'
     testCompile 'com.jayway.jsonpath:json-path-assert:2.2.0'
 
-    compile 'com.squareup.okhttp3:okhttp:3.3.1'
+    compile 'com.squareup.okhttp3:okhttp:3.4.1'
 
     compile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
     compile "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
@@ -183,6 +183,6 @@ bintray {
 bintrayUpload.dependsOn build
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.13'
+    gradleVersion = '3.0'
     distributionUrl = "https://services.gradle.org/distributions/gradle-${gradleVersion}-all.zip"
 }
