@@ -194,12 +194,17 @@ class CouchDBClientIntegrationSpec extends Specification {
         def doc3 = [_id: docId3, 'a-property': 'doc-3 via bulk']
 
         when:
-        def bulkResult = client.updateBulk(database, [doc1, doc2, doc3])
+        def originalDocs = [doc1, doc2, doc3]
+        def bulkResult = client.updateBulk(database, originalDocs)
 
         then:
+        doc1 == client.get(database, docId1)
+        doc2 == client.get(database, docId2)
+        doc3 == client.get(database, docId3)
+        and:
         bulkResult.size() == 3
         and:
-        bulkResult.each { it.ok }
+        bulkResult.each { it.ok == true }
     }
 
     def "query view with single key"() {

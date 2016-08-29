@@ -11,6 +11,7 @@ import org.joda.time.LocalDate
 
 import static java.nio.charset.StandardCharsets.UTF_8
 import static okhttp3.MediaType.parse
+import static org.joda.time.format.ISODateTimeFormat.date
 
 @Slf4j
 class CouchDBClient {
@@ -135,7 +136,7 @@ class CouchDBClient {
         }
 
         if (!document.dateCreated) {
-            document.dateCreated = new LocalDate()
+            document.dateCreated = date().print(new LocalDate())
         }
 
         def documentAsJson = objectMapper.writeValueAsString(document)
@@ -180,7 +181,7 @@ class CouchDBClient {
             throw new IllegalArgumentException("document id missing")
         }
 
-        document.dateUpdated = new LocalDate()
+        document.dateUpdated = date().print(new LocalDate())
 
         def documentAsJson = objectMapper.writeValueAsString(document)
         def body = RequestBody.create(parse("application/json"), documentAsJson)
@@ -219,9 +220,9 @@ class CouchDBClient {
 
         documents.each { document ->
             if (document['_id']) {
-                document.dateUpdated = new LocalDate()
+                document.dateUpdated = date().print(new LocalDate())
             } else if (!document.dateCreated) {
-                document.dateCreated = new LocalDate()
+                document.dateCreated = date().print(new LocalDate())
             }
         }
 
@@ -240,11 +241,20 @@ class CouchDBClient {
         def request = builder.build()
 
         def response = client.newCall(request).execute()
+        if (!response.successful) {
+            log.error("error {}", response.message())
+            throw new IllegalStateException("bulk update failed")
+        }
 
         def result = consume(response.body().byteStream())
-        result.each {
-            if (!it.ok) {
-                log.error("error {}", it)
+        [result, documents].transpose().each { updated, original ->
+            if (updated.ok) {
+                original._id = updated.id
+                original._rev = updated.rev
+                return original
+            } else {
+                log.error("error {}", updated)
+                return null
             }
         }
 
