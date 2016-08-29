@@ -175,6 +175,33 @@ class CouchDBClientIntegrationSpec extends Specification {
         client.get(database, docId2).'a-property' == "create some documents-2"
     }
 
+    def "update documents in bulk"() {
+        given:
+        def docId1 = "test-id/${UUID.randomUUID()}".toString()
+        def docId2 = "test-id/${UUID.randomUUID()}".toString()
+        def docId3 = "test-id/${UUID.randomUUID()}".toString()
+
+        client.create(database, [_id: docId1, 'a-property': "doc-1"])
+        client.create(database, [_id: docId2, 'a-property': "doc-2"])
+
+        def doc1 = client.get(database, docId1)
+        doc1.'a-property' = 'doc-1 changed'
+        doc1.'a-new-property' = 'a new property'
+
+        def doc2 = client.get(database, docId2)
+        doc2.'a-property' = 'doc-2 also changed'
+
+        def doc3 = [_id: docId3, 'a-property': 'doc-3 via bulk']
+
+        when:
+        def bulkResult = client.updateBulk(database, [doc1, doc2, doc3])
+
+        then:
+        bulkResult.size() == 3
+        and:
+        bulkResult.each { it.ok }
+    }
+
     def "query view with single key"() {
         given:
         def docId = "test-id/${UUID.randomUUID()}".toString()

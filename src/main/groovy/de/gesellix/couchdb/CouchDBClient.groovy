@@ -209,6 +209,48 @@ class CouchDBClient {
         return updatedDocument
     }
 
+    def updateBulk(String db, List documents) {
+        if (documents == null) {
+            throw new IllegalArgumentException("documents may not be null")
+        }
+        if (documents.empty) {
+            throw new IllegalArgumentException("documents is empty")
+        }
+
+        documents.each { document ->
+            if (document['_id']) {
+                document.dateUpdated = new LocalDate()
+            } else if (!document.dateCreated) {
+                document.dateCreated = new LocalDate()
+            }
+        }
+
+        def updateDoc = [docs: documents]
+
+        def documentAsJson = objectMapper.writeValueAsString(updateDoc)
+        def body = RequestBody.create(parse("application/json"), documentAsJson)
+
+        def builder = new Request.Builder()
+        builder = builder
+                .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/_bulk_docs")
+                .post(body)
+        if (couchdbUsername && couchdbPassword) {
+            builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+        }
+        def request = builder.build()
+
+        def response = client.newCall(request).execute()
+
+        def result = consume(response.body().byteStream())
+        result.each {
+            if (!it.ok) {
+                log.error("error {}", it)
+            }
+        }
+
+        return result
+    }
+
     def containsDb(String db) {
         def builder = new Request.Builder()
                 .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}")
@@ -383,7 +425,7 @@ class CouchDBClient {
     }
 
     def consume(InputStream stream) {
-        def result = objectMapper.readValue(stream, Map)
+        def result = objectMapper.readValue(stream, Object)
         Util.closeQuietly(stream)
         return result
     }
