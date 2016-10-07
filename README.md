@@ -1,5 +1,8 @@
 # A Groovy CouchDB Client 
 
+[![Build Status](https://travis-ci.org/gesellix/couchdb-client.svg?branch=master)](https://travis-ci.org/gesellix/couchdb-client)
+[ ![Download](https://api.bintray.com/packages/gesellix/couchdb/couchdb-client/images/download.svg) ](https://bintray.com/gesellix/couchdb/couchdb-client/_latestVersion)
+
 Yeah, this is another very thin layer on top of [CouchDB HTTP API](http://docs.couchdb.org/en/1.6.1/intro/api.html).
 
 There's nothing special with it, and it only exists because other solutions are often too over engineered.
@@ -14,7 +17,7 @@ repositories {
     mavenCentral()
 }
 dependencies {
-    compile 'de.gesellix:couchdb-client:2016-08-29_603362afaff5055b6bbe4dc29afa0f235cf2bb2e'
+    compile 'de.gesellix:couchdb-client:2016-10-02_e04162'
 }
 ````
 
