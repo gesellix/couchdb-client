@@ -17,7 +17,7 @@ repositories {
     mavenCentral()
 }
 dependencies {
-    compile 'de.gesellix:couchdb-client:2016-10-30_481362'
+    compile 'de.gesellix:couchdb-client:2017-06-01_37678b'
 }
 ````
 
