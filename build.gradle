@@ -9,10 +9,10 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        //classpath 'org.ajoberstar:gradle-git:0.11.2'
-        classpath 'org.ajoberstar:grgit:1.9.2'
-        classpath 'com.github.ben-manes:gradle-versions-plugin:0.15.0'
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+        //classpath "org.ajoberstar:gradle-git:0.11.2"
+        classpath "org.ajoberstar:grgit:2.3.0"
+        classpath "com.github.ben-manes:gradle-versions-plugin:0.27.0"
+        classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.4"
     }
 }
 
@@ -25,7 +25,7 @@ ext {
     artifactVersion = {
         def repo = Grgit.open()
         def commitHash = repo.head().getAbbreviatedId(6)
-        def localDate = new SimpleDateFormat('yyyy-MM-dd').format(new Date())
+        def localDate = new SimpleDateFormat("yyyy-MM-dd").format(new Date())
         return "${localDate}_${commitHash}".toString()
     }()
     bintrayDryRun = false
@@ -38,15 +38,15 @@ ext {
     spockVersion = '1.1-groovy-2.4'
 }
 
-apply plugin: 'groovy'
-apply plugin: 'com.github.ben-manes.versions'
-apply plugin: 'maven-publish'
-apply plugin: 'com.jfrog.bintray'
+apply plugin: "groovy"
+apply plugin: "com.github.ben-manes.versions"
+apply plugin: "maven-publish"
+apply plugin: "com.jfrog.bintray"
 
 sourceCompatibility = langLevel
 targetCompatibility = langLevel
 
-group = 'de.gesellix'
+group = "de.gesellix"
 
 repositories {
     mavenLocal()
@@ -57,7 +57,7 @@ repositories {
 dependencies {
     compile "org.codehaus.groovy:groovy:$groovyVersion"
     compile "org.codehaus.groovy:groovy-json:$groovyVersion"
-    compile 'commons-lang:commons-lang:2.6'
+    compile "commons-lang:commons-lang:2.6"
 
     compile "org.slf4j:slf4j-api:$slf4jVersion"
     runtime "org.slf4j:log4j-over-slf4j:$slf4jVersion"
@@ -80,13 +80,14 @@ def dependencyVersions = [
 ]
 
 def dependencyVersionsByGroup = [
-        'com.fasterxml.jackson.core'    : jacksonVersion,
-        'com.fasterxml.jackson.databind': jacksonVersion
+        "com.fasterxml.jackson.core"    : jacksonVersion,
+        "com.fasterxml.jackson.databind": jacksonVersion,
+        "org.codehaus.groovy"           : groovyVersion
 ]
 
 configurations {
-    all*.exclude module: 'log4j'
-    all*.exclude module: 'servlet-api'
+    all*.exclude module: "log4j"
+    all*.exclude module: "servlet-api"
 
     all {
         resolutionStrategy {
@@ -108,16 +109,16 @@ sourceSets {
         runtimeClasspath += main.output + test.output
 
         groovy {
-            srcDir 'src/integrationTest/groovy'
+            srcDir "src/integrationTest/groovy"
         }
         resources {
-            srcDir 'src/integrationTest/resources'
+            srcDir "src/integrationTest/resources"
         }
     }
 }
 
 task integrationTest(type: Test) {
-    testClassesDir = sourceSets.integrationTest.output.classesDir
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
     classpath = sourceSets.integrationTest.runtimeClasspath
 }
 
@@ -137,7 +138,7 @@ tasks.withType(Test) {
 
 task sourcesJar(type: Jar) {
     dependsOn classes
-    classifier 'sources'
+    classifier "sources"
     from sourceSets.main.allSource
 }
 
@@ -158,23 +159,23 @@ publishing {
 bintray {
     user = System.env.BINTRAY_USER ?: project["bintray.user"]
     key = System.env.BINTRAY_API_KEY ?: project["bintray.key"]
-    publications = ['couchdbClient']
+    publications = ["couchdbClient"]
     pkg {
-        repo = 'couchdb'
-        name = 'couchdb-client'
-        desc = 'A CouchDB client written in Groovy'
-        licenses = ['Apache-2.0']
-        labels = ['couchdb', 'client']
+        repo = "couchdb"
+        name = "couchdb-client"
+        desc = "A CouchDB client written in Groovy"
+        licenses = ["Apache-2.0"]
+        labels = ["couchdb", "client"]
         version = [
                 name: artifactVersion
         ]
-        vcsUrl = 'https://github.com/gesellix/couchdb-client'
+        vcsUrl = "https://github.com/gesellix/couchdb-client"
     }
     dryRun = bintrayDryRun
 }
 bintrayUpload.dependsOn build
 
-task wrapper(type: Wrapper) {
-    gradleVersion = '3.5'
+wrapper {
+    gradleVersion = "6.0.1"
     distributionType = Wrapper.DistributionType.ALL
 }
