@@ -1,4 +1,4 @@
-# A Groovy CouchDB Client 
+# A Groovy CouchDB Client
 
 [![Build Status](https://travis-ci.org/gesellix/couchdb-client.svg?branch=master)](https://travis-ci.org/gesellix/couchdb-client)
 [ ![Download](https://api.bintray.com/packages/gesellix/couchdb/couchdb-client/images/download.svg) ](https://bintray.com/gesellix/couchdb/couchdb-client/_latestVersion)
@@ -17,7 +17,7 @@ repositories {
     mavenCentral()
 }
 dependencies {
-    compile 'de.gesellix:couchdb-client:2017-06-01_37678b'
+    compile 'de.gesellix:couchdb-client:2020-01-11_a25db9'
 }
 ````
 
@@ -26,6 +26,6 @@ The integration test at `de.gesellix.couchdb.CouchDBClientIntegrationSpec` shows
 ### Contributing
 
 If you miss some feature or find an issue, please contact me via [issue tracker](https://github.com/gesellix/couchdb-client/issues).
-If you'd like to contribute code, you're very welcome to submit a [pull request](https://github.com/gesellix/couchdb-client/pulls)! 
+If you'd like to contribute code, you're very welcome to submit a [pull request](https://github.com/gesellix/couchdb-client/pulls)!
 
 You may also contact me via Twitter [@gesellix](https://twitter.com/gesellix).
