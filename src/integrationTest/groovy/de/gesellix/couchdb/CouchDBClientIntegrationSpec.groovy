@@ -4,14 +4,30 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.joda.JodaModule
 import okhttp3.OkHttpClient
 import org.joda.time.LocalDate
+import org.testcontainers.containers.GenericContainer
+import org.testcontainers.containers.wait.strategy.Wait
+import org.testcontainers.spock.Testcontainers
 import spock.lang.Shared
 import spock.lang.Specification
 import spock.lang.Stepwise
 
 import static com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS
 
+@Testcontainers
 @Stepwise
 class CouchDBClientIntegrationSpec extends Specification {
+
+    static final int COUCHDB_PORT = 5984
+//    static final String COUCHDB_IMAGE = "couchdb:1.7.1"
+    static final String COUCHDB_IMAGE = "couchdb:2.3.1"
+    static GenericContainer couchdbContainer = new GenericContainer(COUCHDB_IMAGE)
+            .withExposedPorts(COUCHDB_PORT)
+//            .waitingFor(Wait.forHttp("/"))
+            .waitingFor(Wait.forHttp("/_up"))
+
+    // allows @Testcontainers to find the statically initialized container reference
+    @Shared
+    GenericContainer couchdb = couchdbContainer
 
     @Shared
     CouchDBClient client
@@ -22,15 +38,17 @@ class CouchDBClientIntegrationSpec extends Specification {
         client = new CouchDBClient(
                 client: new OkHttpClient(),
                 objectMapper: newObjectMapper(),
-                couchdbHost: System.env['couchdb.host'] ?: "127.0.0.1",
-                couchdbPort: System.env['couchdb.port'] ?: "5984" as int,
+                couchdbHost: System.env['couchdb.host'] ?: couchdbContainer.containerIpAddress,
+                couchdbPort: System.env['couchdb.port'] ?: couchdbContainer.getMappedPort(COUCHDB_PORT),
                 couchdbUsername: System.env['couchdb.username'] ?: null,
                 couchdbPassword: System.env['couchdb.password'] ?: null)
         database = "test-db-${UUID.randomUUID()}"
     }
 
     def cleanupSpec() {
-        !client.containsDb(database) || client.deleteDb(database)
+        if (couchdbContainer.isRunning()) {
+            !client.containsDb(database) || client.deleteDb(database)
+        }
     }
 
     ObjectMapper newObjectMapper() {
