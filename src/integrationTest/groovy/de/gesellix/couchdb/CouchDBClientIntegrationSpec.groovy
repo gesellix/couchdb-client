@@ -1,5 +1,6 @@
 package de.gesellix.couchdb
 
+import com.squareup.moshi.Moshi
 import okhttp3.OkHttpClient
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.Wait
@@ -34,6 +35,9 @@ class CouchDBClientIntegrationSpec extends Specification {
     def setupSpec() {
         client = new CouchDBClient(
                 client: new OkHttpClient(),
+                moshi: new Moshi.Builder()
+                        .add(LocalDate, new LocalDateJsonAdapter())
+                        .build(),
                 couchdbHost: System.env['couchdb.host'] ?: couchdbContainer.containerIpAddress,
                 couchdbPort: System.env['couchdb.port'] ?: couchdbContainer.getMappedPort(COUCHDB_PORT),
                 couchdbUsername: System.env['couchdb.username'] ?: null,
@@ -82,12 +86,14 @@ class CouchDBClientIntegrationSpec extends Specification {
         def today = LocalDate.now()
 
         when:
-        def result = client.create(database, [_id: docId])
+        def result = client.create(database, [_id: docId, exampleDate: LocalDate.parse("2020-01-31")])
 
         then:
         result._id == docId
         and:
         result._rev.startsWith("1-")
+        and:
+        result.exampleDate == "2020-01-31"
         and:
         result.dateCreated
         and:
@@ -121,12 +127,14 @@ class CouchDBClientIntegrationSpec extends Specification {
         def existingDoc = client.create(database, [:])
 
         when:
-        def result = client.update(database, [_id: existingDoc._id, _rev: existingDoc._rev])
+        def result = client.update(database, [_id: existingDoc._id, _rev: existingDoc._rev, exampleDate: LocalDate.parse("2020-02-02")])
 
         then:
         result._id =~ "\\w+"
         and:
         result._rev.startsWith("2-")
+        and:
+        result.exampleDate == "2020-02-02"
         and:
         !existingDoc.dateUdated
         and:
