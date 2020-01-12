@@ -31,10 +31,8 @@ ext {
     bintrayDryRun = false
 
     groovyVersion = "2.5.8"
-    jacksonVersion = "2.10.2"
     logbackVersion = "1.2.3"
-    metricsVersion = "3.0.2"
-    slf4jVersion = "1.7.25"
+    slf4jVersion = "1.7.29"
     spockVersion = "1.3-groovy-2.5"
 }
 
@@ -69,21 +67,18 @@ dependencies {
     testCompile "com.jayway.jsonpath:json-path-assert:2.4.0"
     testCompile "org.testcontainers:spock:1.12.4"
 
-    compile "com.squareup.okhttp3:okhttp:3.14.4"
-
-    compile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
-    compile "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
-    compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:$jacksonVersion"
+    compile "com.squareup.okhttp3:okhttp:4.3.1"
+    compile "com.squareup.moshi:moshi:1.9.2"
 }
 
 def dependencyVersions = [
+        "com.squareup.okio:okio:2.4.3",
+        "org.jetbrains:annotations:17.0.0",
         "org.slf4j:slf4j-api:$slf4jVersion"
 ]
 
 def dependencyVersionsByGroup = [
-        "com.fasterxml.jackson.core"    : jacksonVersion,
-        "com.fasterxml.jackson.databind": jacksonVersion,
-        "org.codehaus.groovy"           : groovyVersion
+        "org.codehaus.groovy": groovyVersion
 ]
 
 configurations {

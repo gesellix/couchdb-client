@@ -1,9 +1,6 @@
 package de.gesellix.couchdb
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.joda.JodaModule
 import okhttp3.OkHttpClient
-import org.joda.time.LocalDate
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.spock.Testcontainers
@@ -11,7 +8,7 @@ import spock.lang.Shared
 import spock.lang.Specification
 import spock.lang.Stepwise
 
-import static com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS
+import java.time.LocalDate
 
 @Testcontainers
 @Stepwise
@@ -37,7 +34,6 @@ class CouchDBClientIntegrationSpec extends Specification {
     def setupSpec() {
         client = new CouchDBClient(
                 client: new OkHttpClient(),
-                objectMapper: newObjectMapper(),
                 couchdbHost: System.env['couchdb.host'] ?: couchdbContainer.containerIpAddress,
                 couchdbPort: System.env['couchdb.port'] ?: couchdbContainer.getMappedPort(COUCHDB_PORT),
                 couchdbUsername: System.env['couchdb.username'] ?: null,
@@ -49,13 +45,6 @@ class CouchDBClientIntegrationSpec extends Specification {
         if (couchdbContainer.isRunning()) {
             !client.containsDb(database) || client.deleteDb(database)
         }
-    }
-
-    ObjectMapper newObjectMapper() {
-        def objectMapper = new ObjectMapper()
-        objectMapper.registerModule(new JodaModule())
-        objectMapper.configure(WRITE_DATES_AS_TIMESTAMPS, false)
-        objectMapper
     }
 
     def "ensure connectivity"() {
@@ -90,7 +79,7 @@ class CouchDBClientIntegrationSpec extends Specification {
     def "create doc with existing _id"() {
         given:
         def docId = "test-id/${UUID.randomUUID()}".toString()
-        def today = new LocalDate()
+        def today = LocalDate.now()
 
         when:
         def result = client.create(database, [_id: docId])
@@ -102,14 +91,14 @@ class CouchDBClientIntegrationSpec extends Specification {
         and:
         result.dateCreated
         and:
-        today.minusDays(1).isBefore(new LocalDate(result.dateCreated as String))
+        today.minusDays(1).isBefore(LocalDate.parse(result.dateCreated as String))
         and:
-        today.plusDays(1).isAfter(new LocalDate(result.dateCreated as String))
+        today.plusDays(1).isAfter(LocalDate.parse(result.dateCreated as String))
     }
 
     def "create doc with missing _id"() {
         given:
-        def today = new LocalDate()
+        def today = LocalDate.now()
 
         when:
         def result = client.create(database, [:])
@@ -121,14 +110,14 @@ class CouchDBClientIntegrationSpec extends Specification {
         and:
         result.dateCreated
         and:
-        today.minusDays(1).isBefore(new LocalDate(result.dateCreated as String))
+        today.minusDays(1).isBefore(LocalDate.parse(result.dateCreated as String))
         and:
-        today.plusDays(1).isAfter(new LocalDate(result.dateCreated as String))
+        today.plusDays(1).isAfter(LocalDate.parse(result.dateCreated as String))
     }
 
     def "update doc"() {
         given:
-        def today = new LocalDate()
+        def today = LocalDate.now()
         def existingDoc = client.create(database, [:])
 
         when:
@@ -143,9 +132,9 @@ class CouchDBClientIntegrationSpec extends Specification {
         and:
         result.dateUpdated
         and:
-        today.minusDays(1).isBefore(new LocalDate(result.dateUpdated as String))
+        today.minusDays(1).isBefore(LocalDate.parse(result.dateUpdated as String))
         and:
-        today.plusDays(1).isAfter(new LocalDate(result.dateUpdated as String))
+        today.plusDays(1).isAfter(LocalDate.parse(result.dateUpdated as String))
     }
 
     def "get doc"() {
