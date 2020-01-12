@@ -1,24 +1,25 @@
 package de.gesellix.couchdb
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.squareup.moshi.Moshi
 import groovy.util.logging.Slf4j
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.internal.Util
-import org.joda.time.LocalDate
+import okio.Okio
+
+import java.time.LocalDate
 
 import static java.nio.charset.StandardCharsets.UTF_8
 import static okhttp3.MediaType.parse
-import static org.joda.time.format.ISODateTimeFormat.date
 
 @Slf4j
 class CouchDBClient {
 
     OkHttpClient client
 
-    ObjectMapper objectMapper
+    Moshi moshi
 
     String couchdbHost
     int couchdbPort
@@ -28,7 +29,8 @@ class CouchDBClient {
 
     CouchDBClient() {
         this.client = new OkHttpClient()
-        this.objectMapper = new ObjectMapper()
+        this.moshi = new Moshi.Builder()
+                .build()
         this.couchdbHost = "127.0.0.1"
         this.couchdbPort = 5984
     }
@@ -45,27 +47,29 @@ class CouchDBClient {
             if (response.code() == 404) {
                 response.body().close()
                 return false
-            } else {
+            }
+            else {
                 log.error("error {}", response.message())
                 response.body().close()
                 throw new IllegalStateException("could not check for database existence")
             }
-        } else {
+        }
+        else {
             log.info(response.body().string())
             return true
         }
     }
 
     def <R> R query(String db, String viewName, String key, boolean includeDocs = true) {
-        def encodedKey = objectMapper.writeValueAsString(key)
+        String encodedKey = moshi.adapter(String).toJson(key)
 
         Request request = new Request.Builder()
                 .url("http://${couchdbHost}:${couchdbPort}" +
-                "/${db.toLowerCase()}" +
-                "/_design/${db.capitalize()}" +
-                "/_view/${viewName}" +
-                "?include_docs=${includeDocs}" +
-                "&key=${encodedKey}")
+                     "/${db.toLowerCase()}" +
+                     "/_design/${db.capitalize()}" +
+                     "/_view/${viewName}" +
+                     "?include_docs=${includeDocs}" +
+                     "&key=${encodedKey}")
                 .build()
 
         def response = client.newCall(request).execute()
@@ -79,15 +83,15 @@ class CouchDBClient {
     }
 
     def <R> R query(String db, String viewName, Collection<String> keys, boolean includeDocs = true) {
-        def encodedKeys = objectMapper.writeValueAsString(keys)
+        String encodedKeys = moshi.adapter(Collection).toJson(keys)
 
         Request request = new Request.Builder()
                 .url("http://${couchdbHost}:${couchdbPort}" +
-                "/${db.toLowerCase()}" +
-                "/_design/${db.capitalize()}" +
-                "/_view/${viewName}" +
-                "?include_docs=${includeDocs}" +
-                "&keys=${encodedKeys}")
+                     "/${db.toLowerCase()}" +
+                     "/_design/${db.capitalize()}" +
+                     "/_view/${viewName}" +
+                     "?include_docs=${includeDocs}" +
+                     "&keys=${encodedKeys}")
                 .build()
 
         def response = client.newCall(request).execute()
@@ -103,8 +107,8 @@ class CouchDBClient {
     def getAllDocs(String db, boolean includeDocs = true, boolean includeDesignDoc = false) {
         def builder = new Request.Builder()
                 .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}" +
-                "/_all_docs" +
-                "?include_docs=${includeDocs}")
+                     "/_all_docs" +
+                     "?include_docs=${includeDocs}")
                 .get()
         if (couchdbUsername && couchdbPassword) {
             builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
@@ -116,7 +120,8 @@ class CouchDBClient {
         if (!response.successful) {
             log.error("error getting all docs: {}/{}", response.code(), response.message())
             throw new IllegalStateException("could not get all docs with")
-        } else {
+        }
+        else {
             def allDocs = consume(response.body().byteStream())
             allDocs = allDocs.rows.collect { row -> includeDocs ? row.doc : row }
             if (!includeDesignDoc) {
@@ -135,12 +140,10 @@ class CouchDBClient {
             throw new IllegalArgumentException("document must be new")
         }
 
-        if (!document.dateCreated) {
-            document.dateCreated = date().print(new LocalDate())
-        }
+        beforeCreate(document)
 
-        def documentAsJson = objectMapper.writeValueAsString(document)
-        def body = RequestBody.create(parse("application/json"), documentAsJson)
+        def documentAsJson = moshi.adapter(Map).toJson(document)
+        def body = RequestBody.create(documentAsJson, parse("application/json"))
 
         def builder = new Request.Builder()
         if (document['_id']) {
@@ -149,7 +152,8 @@ class CouchDBClient {
             builder = builder
                     .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}")
                     .put(body)
-        } else {
+        }
+        else {
             builder = builder
                     .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}")
                     .post(body)
@@ -167,7 +171,7 @@ class CouchDBClient {
             throw new IllegalStateException("error creating document")
         }
 
-        def createdDocument = objectMapper.readValue(documentAsJson, Map)
+        def createdDocument = moshi.adapter(Object).fromJson(documentAsJson)
         createdDocument['_id'] = result.id
         createdDocument['_rev'] = result.rev
         return createdDocument
@@ -181,10 +185,10 @@ class CouchDBClient {
             throw new IllegalArgumentException("document id missing")
         }
 
-        document.dateUpdated = date().print(new LocalDate())
+        beforeUpdate(document)
 
-        def documentAsJson = objectMapper.writeValueAsString(document)
-        def body = RequestBody.create(parse("application/json"), documentAsJson)
+        def documentAsJson = moshi.adapter(Map).toJson(document)
+        def body = RequestBody.create(documentAsJson, parse("application/json"))
 
         def builder = new Request.Builder()
         String docId = document['_id']
@@ -205,7 +209,7 @@ class CouchDBClient {
             throw new IllegalStateException("error updating document")
         }
 
-        def updatedDocument = objectMapper.readValue(documentAsJson, Map)
+        def updatedDocument = moshi.adapter(Object).fromJson(documentAsJson)
         updatedDocument['_rev'] = result.rev
         return updatedDocument
     }
@@ -220,16 +224,17 @@ class CouchDBClient {
 
         documents.each { document ->
             if (document['_id']) {
-                document.dateUpdated = date().print(new LocalDate())
-            } else if (!document.dateCreated) {
-                document.dateCreated = date().print(new LocalDate())
+                beforeUpdate(document)
+            }
+            else if (!document.dateCreated) {
+                beforeCreate(document)
             }
         }
 
         def updateDoc = [docs: documents]
 
-        def documentAsJson = objectMapper.writeValueAsString(updateDoc)
-        def body = RequestBody.create(parse("application/json"), documentAsJson)
+        def documentAsJson = moshi.adapter(Object).toJson(updateDoc)
+        def body = RequestBody.create(documentAsJson, parse("application/json"))
 
         def builder = new Request.Builder()
         builder = builder
@@ -252,7 +257,8 @@ class CouchDBClient {
                 original._id = updated.id
                 original._rev = updated.rev
                 return original
-            } else {
+            }
+            else {
                 log.error("error {}", updated)
                 return null
             }
@@ -275,11 +281,13 @@ class CouchDBClient {
         if (!response.successful) {
             if (response.code() == 404) {
                 return false
-            } else {
+            }
+            else {
                 log.error("error {}", response.message())
                 throw new IllegalStateException("could not check for database existence")
             }
-        } else {
+        }
+        else {
             return true
         }
     }
@@ -287,7 +295,7 @@ class CouchDBClient {
     def createDb(String db) {
         def builder = new Request.Builder()
                 .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}")
-                .put(RequestBody.create(parse("application/json"), ''))
+                .put(RequestBody.create('', parse("application/json")))
         if (couchdbUsername && couchdbPassword) {
             builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
         }
@@ -358,7 +366,8 @@ class CouchDBClient {
                 update(db, mergedDesignDoc)
             }
             return currentDesignDoc
-        } else {
+        }
+        else {
             return update(db, newDesignDoc)
         }
     }
@@ -378,11 +387,13 @@ class CouchDBClient {
         if (!response.successful) {
             if (response.code() == 404) {
                 return false
-            } else {
+            }
+            else {
                 log.error("error {}", response.message())
                 throw new IllegalStateException("could not check for doc existence")
             }
-        } else {
+        }
+        else {
             return true
         }
     }
@@ -402,7 +413,8 @@ class CouchDBClient {
         if (!response.successful) {
             log.error("error getting document({}): {}/{}", docId, response.code(), response.message())
             throw new IllegalStateException("could not get doc with id '${docId}'")
-        } else {
+        }
+        else {
             return consume(response.body().byteStream())
         }
     }
@@ -422,7 +434,8 @@ class CouchDBClient {
         if (!response.successful) {
             log.error("error deleting doc{ _id:{}, _rev:{} }: {}/{}", docId, rev, response.code(), response.message())
             throw new IllegalStateException("could not delete doc with id/rev '${docId}'/'${rev}'")
-        } else {
+        }
+        else {
             def result = consume(response.body().byteStream())
             return result
         }
@@ -435,7 +448,7 @@ class CouchDBClient {
     }
 
     def consume(InputStream stream) {
-        def result = objectMapper.readValue(stream, Object)
+        def result = moshi.adapter(Object).fromJson(Okio.buffer(Okio.source(stream)))
         Util.closeQuietly(stream)
         return result
     }
@@ -445,5 +458,15 @@ class CouchDBClient {
             docId = URLEncoder.encode(docId, UTF_8.toString())
         }
         docId
+    }
+
+    def beforeCreate(def document) {
+        if (!document.dateCreated) {
+            document.dateCreated = LocalDate.now().toString()
+        }
+    }
+
+    def beforeUpdate(def document) {
+        document.dateUpdated = LocalDate.now().toString()
     }
 }
