@@ -55,11 +55,9 @@ repositories {
 dependencies {
     compile "org.codehaus.groovy:groovy:$groovyVersion"
     compile "org.codehaus.groovy:groovy-json:$groovyVersion"
-    compile "commons-lang:commons-lang:2.6"
 
     compile "org.slf4j:slf4j-api:$slf4jVersion"
-    runtime "org.slf4j:log4j-over-slf4j:$slf4jVersion"
-    runtime "ch.qos.logback:logback-classic:$logbackVersion"
+    testRuntime "ch.qos.logback:logback-classic:$logbackVersion"
 
     testCompile "org.spockframework:spock-core:$spockVersion"
     testCompile "cglib:cglib-nodep:3.3.0"
