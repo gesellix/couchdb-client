@@ -1,9 +1,10 @@
 # A Groovy CouchDB Client
 
-[![Build Status](https://travis-ci.org/gesellix/couchdb-client.svg?branch=master)](https://travis-ci.org/gesellix/couchdb-client)
-[ ![Download](https://api.bintray.com/packages/gesellix/couchdb/couchdb-client/images/download.svg) ](https://bintray.com/gesellix/couchdb/couchdb-client/_latestVersion)
+[![Publish](https://github.com/gesellix/couchdb-client/actions/workflows/cd.yml/badge.svg)](https://github.com/gesellix/couchdb-client/actions/workflows/cd.yml)
+[![Maven Central](https://github.com/gesellix/couchdb-client/actions/workflows/release.yml/badge.svg)](https://github.com/gesellix/couchdb-client/actions/workflows/release.yml)
+[Latest version on Maven Central](https://search.maven.org/artifact/de.gesellix/couchdb-client)
 
-Yeah, this is another very thin layer on top of [CouchDB HTTP API](http://docs.couchdb.org/en/1.6.1/intro/api.html).
+Yeah, this is another very thin layer on top of [CouchDB HTTP API](https://docs.couchdb.org/en/2.3.1/intro/api.html).
 
 There's nothing special with it, and it only exists because other solutions are often too over engineered.
 
@@ -11,17 +12,27 @@ You won't find wonderful abstractions, only the more or less plain adaption to t
 
 ### Usage (Gradle)
 
-````
+````kotlin
 repositories {
-    maven { url 'http://dl.bintray.com/gesellix/couchdb' }
-    mavenCentral()
+  mavenCentral()
 }
 dependencies {
-    compile 'de.gesellix:couchdb-client:2020-01-11_a25db9'
+  implementation("de.gesellix:couchdb-client:2021-03-02T23-21-53")
 }
 ````
 
 The integration test at `de.gesellix.couchdb.CouchDBClientIntegrationSpec` shows all supported use cases.
+
+## Release Workflow
+
+There are multiple GitHub Action Workflows for the different steps in the package's lifecycle:
+
+- CI: Builds and checks incoming changes on a pull request
+  - triggered on every push to a non-default branch
+- CD: Publishes the Gradle artifacts to GitHub Package Registry
+  - triggered only on pushes to the default branch
+- Release: Publishes Gradle artifacts to Sonatype and releases them to Maven Central
+  - triggered on a published GitHub release using the underlying tag as artifact version, e.g. via `git tag -m "$MESSAGE" v$(date +"%Y-%m-%dT%H-%M-%S")`
 
 ### Contributing
 
