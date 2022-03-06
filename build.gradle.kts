@@ -34,7 +34,7 @@ dependencies {
 
   testImplementation("org.spockframework:spock-core:${rootProject.extra["spockVersion"]}")
   testImplementation("cglib:cglib-nodep:3.3.0")
-  testImplementation("com.jayway.jsonpath:json-path:2.5.0")
+  testImplementation("com.jayway.jsonpath:json-path:2.7.0")
   testImplementation("com.jayway.jsonpath:json-path-assert:2.5.0")
   testImplementation("org.testcontainers:spock:1.15.2")
 
