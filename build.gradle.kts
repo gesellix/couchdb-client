@@ -1,15 +1,6 @@
 import java.text.SimpleDateFormat
 import java.util.*
 
-buildscript {
-  extra.apply {
-    set("groovyVersion", "2.5.13")
-    set("logbackVersion", "1.2.3")
-    set("slf4jVersion", "1.7.30")
-    set("spockVersion", "1.3-groovy-2.5")
-  }
-}
-
 plugins {
   id("groovy")
   id("java-library")
@@ -25,33 +16,36 @@ repositories {
   mavenCentral()
 }
 
+val groovyVersion = "3.0.9"
+val kotlinVersion = "1.5.31"
+
 dependencies {
-  implementation("org.codehaus.groovy:groovy:${rootProject.extra["groovyVersion"]}")
-  implementation("org.codehaus.groovy:groovy-json:${rootProject.extra["groovyVersion"]}")
+  implementation("org.codehaus.groovy:groovy:${groovyVersion}")
+  implementation("org.codehaus.groovy:groovy-json:${groovyVersion}")
 
-  implementation("org.slf4j:slf4j-api:${rootProject.extra["slf4jVersion"]}")
-  testRuntimeOnly("ch.qos.logback:logback-classic:${rootProject.extra["logbackVersion"]}")
+  implementation("org.slf4j:slf4j-api:1.7.36")
+  testRuntimeOnly("ch.qos.logback:logback-classic:1.2.10")
 
-  testImplementation("org.spockframework:spock-core:${rootProject.extra["spockVersion"]}")
+  testImplementation("org.spockframework:spock-core:2.0-groovy-3.0")
   testImplementation("cglib:cglib-nodep:3.3.0")
   testImplementation("com.jayway.jsonpath:json-path:2.7.0")
   testImplementation("com.jayway.jsonpath:json-path-assert:2.7.0")
-  testImplementation("org.testcontainers:spock:1.15.2")
+  testImplementation("org.testcontainers:spock:1.16.3")
 
-  implementation("com.squareup.okhttp3:okhttp:4.9.1")
+  implementation("com.squareup.okhttp3:okhttp:4.9.3")
   implementation("com.squareup.moshi:moshi:1.13.0")
 }
 
-val dependencyVersions = listOf(
+val dependencyVersions = listOf<String>(
   "com.squareup.okio:okio:3.0.0",
   "net.java.dev.jna:jna:5.5.0",
   "org.jetbrains:annotations:17.0.0",
-  "org.slf4j:slf4j-api:${extra["slf4jVersion"]}"
+  "org.slf4j:slf4j-api:1.7.36"
 )
 
-val dependencyVersionsByGroup = mapOf(
-  "org.jetbrains.kotlin" to "1.4.10",
-  "org.codehaus.groovy" to extra["groovyVersion"] as String
+val dependencyVersionsByGroup = mapOf<String, String>(
+  "org.jetbrains.kotlin" to kotlinVersion,
+  "org.codehaus.groovy" to groovyVersion
 )
 
 configurations.all {
@@ -71,6 +65,10 @@ configurations.all {
 java {
   sourceCompatibility = JavaVersion.VERSION_1_8
   targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+tasks.withType<Test> {
+  useJUnitPlatform()
 }
 
 val javadocJar by tasks.registering(Jar::class) {
