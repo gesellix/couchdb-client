@@ -18,6 +18,7 @@ class CouchDBClientIntegrationSpec extends Specification {
   static final int COUCHDB_PORT = 5984
 //    static final String COUCHDB_IMAGE = "couchdb:1.7.1"
   static final String COUCHDB_IMAGE = "couchdb:2.3.1"
+//  static final String COUCHDB_IMAGE = "couchdb:3.2.1"
   static GenericContainer couchdbContainer = new GenericContainer(COUCHDB_IMAGE)
       .withExposedPorts(COUCHDB_PORT)
 //            .waitingFor(Wait.forHttp("/"))

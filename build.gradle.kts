@@ -36,14 +36,14 @@ dependencies {
   implementation("com.squareup.moshi:moshi:1.13.0")
 }
 
-val dependencyVersions = listOf<String>(
+val dependencyVersions = listOf(
   "com.squareup.okio:okio:3.0.0",
   "net.java.dev.jna:jna:5.10.0",
   "org.jetbrains:annotations:23.0.0",
   "org.slf4j:slf4j-api:1.7.36"
 )
 
-val dependencyVersionsByGroup = mapOf<String, String>(
+val dependencyVersionsByGroup = mapOf(
   "org.jetbrains.kotlin" to kotlinVersion,
   "org.codehaus.groovy" to groovyVersion
 )
