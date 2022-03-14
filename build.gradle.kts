@@ -40,7 +40,8 @@ val dependencyVersions = listOf(
   "com.squareup.okio:okio:3.0.0",
   "net.java.dev.jna:jna:5.10.0",
   "org.jetbrains:annotations:23.0.0",
-  "org.slf4j:slf4j-api:1.7.36"
+  "org.slf4j:slf4j-api:1.7.36",
+  "org.spockframework:spock-core:2.1-groovy-3.0"
 )
 
 val dependencyVersionsByGroup = mapOf(
