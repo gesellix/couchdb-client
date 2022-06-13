@@ -32,7 +32,7 @@ dependencies {
   testImplementation("com.jayway.jsonpath:json-path-assert:2.7.0")
   testImplementation("org.testcontainers:spock:1.17.1")
 
-  implementation("com.squareup.okhttp3:okhttp:4.9.3")
+  implementation("com.squareup.okhttp3:okhttp:4.10.0")
   implementation("com.squareup.moshi:moshi:1.13.0")
 }
 
