@@ -20,7 +20,7 @@ dependencies {
 }
 ````
 
-The integration test at `de.gesellix.couchdb.CouchDBClientIntegrationSpec` shows all supported use cases.
+The integration test at `de.gesellix.couchdb.CouchDbClientIntegrationSpec` shows all supported use cases.
 
 ### Contributing
 

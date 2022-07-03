@@ -13,7 +13,7 @@ import java.time.LocalDate
 
 @Testcontainers
 @Stepwise
-class CouchDBClientIntegrationSpec extends Specification {
+class CouchDbClientIntegrationSpec extends Specification {
 
   static final int COUCHDB_PORT = 5984
 //    static final String COUCHDB_IMAGE = "couchdb:1.7.1"
@@ -29,17 +29,17 @@ class CouchDBClientIntegrationSpec extends Specification {
   GenericContainer couchdb = couchdbContainer
 
   @Shared
-  CouchDBClient client
+  CouchDbClient client
   @Shared
   String database
 
   def setupSpec() {
-    client = new CouchDBClient(
+    client = new CouchDbClient(
         client: new OkHttpClient(),
         moshi: new Moshi.Builder()
             .add(LocalDate, new LocalDateJsonAdapter())
             .build(),
-        couchdbHost: System.env['couchdb.host'] ?: couchdbContainer.containerIpAddress,
+        couchdbHost: System.env['couchdb.host'] ?: couchdbContainer.host,
         couchdbPort: System.env['couchdb.port'] ?: couchdbContainer.getMappedPort(COUCHDB_PORT),
         couchdbUsername: System.env['couchdb.username'] ?: null,
         couchdbPassword: System.env['couchdb.password'] ?: null)
@@ -148,10 +148,10 @@ class CouchDBClientIntegrationSpec extends Specification {
 
   def "get doc"() {
     given:
-    def existingDoc = client.create(database, [:])
+    Map existingDoc = client.create(database, [:])
 
     when:
-    def result = client.get(database, existingDoc._id as String)
+    Map result = client.get(database, existingDoc._id as String)
 
     then:
     result._id == existingDoc._id
@@ -161,11 +161,11 @@ class CouchDBClientIntegrationSpec extends Specification {
 
   def "delete doc"() {
     given:
-    def existingDoc = client.create(database, [:])
-    def created = client.contains(database, existingDoc._id as String)
+    Map existingDoc = client.create(database, [:])
+    boolean created = client.contains(database, existingDoc._id as String)
 
     when:
-    def result = client.delete(database, existingDoc._id as String, existingDoc._rev as String)
+    Map result = client.delete(database, existingDoc._id as String, existingDoc._rev as String)
 
     then:
     created
@@ -177,8 +177,8 @@ class CouchDBClientIntegrationSpec extends Specification {
 
   def "create some documents"() {
     given:
-    def docId1 = "test-id/${UUID.randomUUID()}".toString()
-    def docId2 = "test-id/${UUID.randomUUID()}".toString()
+    String docId1 = "test-id/${UUID.randomUUID()}"
+    String docId2 = "test-id/${UUID.randomUUID()}"
 
     when:
     client.create(database, [_id: docId1, 'a-property': "create some documents-1"])
@@ -193,25 +193,25 @@ class CouchDBClientIntegrationSpec extends Specification {
 
   def "update documents in bulk"() {
     given:
-    def docId1 = "test-id/${UUID.randomUUID()}".toString()
-    def docId2 = "test-id/${UUID.randomUUID()}".toString()
-    def docId3 = "test-id/${UUID.randomUUID()}".toString()
+    String docId1 = "test-id/${UUID.randomUUID()}"
+    String docId2 = "test-id/${UUID.randomUUID()}"
+    String docId3 = "test-id/${UUID.randomUUID()}"
 
     client.create(database, [_id: docId1, 'a-property': "doc-1"])
     client.create(database, [_id: docId2, 'a-property': "doc-2"])
 
-    def doc1 = client.get(database, docId1)
+    Map doc1 = client.get(database, docId1)
     doc1.'a-property' = 'doc-1 changed'
     doc1.'a-new-property' = 'a new property'
 
-    def doc2 = client.get(database, docId2)
+    Map doc2 = client.get(database, docId2)
     doc2.'a-property' = 'doc-2 also changed'
 
-    def doc3 = [_id: docId3, 'a-property': 'doc-3 via bulk']
+    Map doc3 = [_id: docId3, 'a-property': 'doc-3 via bulk']
 
     when:
-    def originalDocs = [doc1, doc2, doc3]
-    def bulkResult = client.updateBulk(database, originalDocs)
+    List<Map> originalDocs = [doc1, doc2, doc3]
+    List<Map> bulkResult = client.updateBulk(database, originalDocs)
 
     then:
     doc1 == client.get(database, docId1)
@@ -225,11 +225,11 @@ class CouchDBClientIntegrationSpec extends Specification {
 
   def "query view with single key"() {
     given:
-    def docId = "test-id/${UUID.randomUUID()}".toString()
+    String docId = "test-id/${UUID.randomUUID()}"
     client.create(database, [_id: docId, 'a-property': "query view with single key-1"])
 
     when:
-    def result = client.query(database, "by_a-property", "query view with single key-1")
+    List<Map> result = client.query(database, "by_a-property", "query view with single key-1")
 
     then:
     result.first()._id == docId
@@ -237,13 +237,13 @@ class CouchDBClientIntegrationSpec extends Specification {
 
   def "query view with multiple keys"() {
     given:
-    def docId1 = "test-id/${UUID.randomUUID()}".toString()
+    String docId1 = "test-id/${UUID.randomUUID()}"
     client.create(database, [_id: docId1, 'a-property': "a-value-1"])
-    def docId2 = "test-id/${UUID.randomUUID()}".toString()
+    String docId2 = "test-id/${UUID.randomUUID()}"
     client.create(database, [_id: docId2, 'a-property': "a-value-2"])
 
     when:
-    def result = client.query(database, "by_a-property", ["a-value-1", "unknown"])
+    List<Map> result = client.query(database, "by_a-property", ["a-value-1", "unknown"])
 
     then:
     result._id == [docId1]
