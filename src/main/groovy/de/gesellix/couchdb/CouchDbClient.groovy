@@ -1,47 +1,80 @@
 package de.gesellix.couchdb
 
 import com.squareup.moshi.Moshi
-import groovy.util.logging.Slf4j
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.Response
 import okhttp3.internal.Util
 import okio.Okio
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.time.LocalDate
 
 import static java.nio.charset.StandardCharsets.UTF_8
 import static okhttp3.MediaType.parse
 
-@Slf4j
-class CouchDBClient {
+class CouchDbClient {
+
+  private final static Logger log = LoggerFactory.getLogger(getClass())
 
   OkHttpClient client
 
   Moshi moshi
 
+  boolean tlsEnabled
   String couchdbHost
   int couchdbPort
+
+  String baseUrl
 
   String couchdbUsername
   String couchdbPassword
 
-  CouchDBClient() {
+  CouchDbClient() {
     this.client = new OkHttpClient()
     this.moshi = new Moshi.Builder()
         .build()
+    this.tlsEnabled = false
     this.couchdbHost = "127.0.0.1"
     this.couchdbPort = 5984
   }
 
-  def healthy() {
-    def builder = new Request.Builder()
-        .url("http://${couchdbHost}:${couchdbPort}")
-        .get()
-    def request = builder.build()
+  void updateBaseUrl() {
+    this.baseUrl = "${tlsEnabled ? "https" : "http"}://${couchdbHost}:${couchdbPort}"
+  }
 
-    def response = client.newCall(request).execute()
+  String getBaseUrl() {
+    if (baseUrl == null) {
+      updateBaseUrl()
+    }
+    return baseUrl
+  }
+
+  void setTlsEnabled(boolean tlsEnabled) {
+    this.tlsEnabled = tlsEnabled
+    this.updateBaseUrl()
+  }
+
+  void setCouchdbHost(String couchdbHost) {
+    this.couchdbHost = couchdbHost
+    this.updateBaseUrl()
+  }
+
+  void setCouchdbPort(int couchdbPort) {
+    this.couchdbPort = couchdbPort
+    this.updateBaseUrl()
+  }
+
+  boolean healthy() {
+    Request.Builder builder = new Request.Builder()
+        .url(getBaseUrl())
+        .get()
+    Request request = builder.build()
+
+    Response response = client.newCall(request).execute()
 
     if (!response.successful) {
       if (response.code() == 404) {
@@ -63,16 +96,20 @@ class CouchDBClient {
   def <R> R query(String db, String viewName, String key, boolean includeDocs = true) {
     String encodedKey = moshi.adapter(String).toJson(key)
 
-    Request request = new Request.Builder()
-        .url("http://${couchdbHost}:${couchdbPort}" +
+    Request.Builder builder = new Request.Builder()
+        .url(getBaseUrl() +
              "/${db.toLowerCase()}" +
              "/_design/${db.capitalize()}" +
              "/_view/${viewName}" +
              "?include_docs=${includeDocs}" +
              "&key=${encodedKey}")
-        .build()
+        .get()
+    if (couchdbUsername && couchdbPassword) {
+      builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+    }
+    Request request = builder.build()
 
-    def response = client.newCall(request).execute()
+    Response response = client.newCall(request).execute()
     if (!response.successful) {
       log.error("request failed: {}", request)
       throw new IOException(response.body().string())
@@ -85,16 +122,21 @@ class CouchDBClient {
   def <R> R query(String db, String viewName, Collection<String> keys, boolean includeDocs = true) {
     String encodedKeys = moshi.adapter(Collection).toJson(keys)
 
-    Request request = new Request.Builder()
-        .url("http://${couchdbHost}:${couchdbPort}" +
+    Request.Builder builder = new Request.Builder()
+        .url(getBaseUrl() +
              "/${db.toLowerCase()}" +
              "/_design/${db.capitalize()}" +
              "/_view/${viewName}" +
              "?include_docs=${includeDocs}" +
              "&keys=${encodedKeys}")
-        .build()
+        .get()
+    if (couchdbUsername && couchdbPassword) {
+      builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+    }
 
-    def response = client.newCall(request).execute()
+    Request request = builder.build()
+
+    Response response = client.newCall(request).execute()
     if (!response.successful) {
       log.error("request failed: {}", request)
       throw new IOException(response.body().string())
@@ -105,17 +147,17 @@ class CouchDBClient {
   }
 
   def getAllDocs(String db, boolean includeDocs = true, boolean includeDesignDoc = false) {
-    def builder = new Request.Builder()
-        .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}" +
+    Request.Builder builder = new Request.Builder()
+        .url("${getBaseUrl()}/${db.toLowerCase()}" +
              "/_all_docs" +
              "?include_docs=${includeDocs}")
         .get()
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
     }
-    def request = builder.build()
+    Request request = builder.build()
 
-    def response = client.newCall(request).execute()
+    Response response = client.newCall(request).execute()
 
     if (!response.successful) {
       log.error("error getting all docs: {}/{}", response.code(), response.message())
@@ -131,7 +173,7 @@ class CouchDBClient {
     }
   }
 
-  def create(String db, def document) {
+  def create(String db, Map document) {
     if (document == null) {
       throw new IllegalArgumentException("document may not be null")
     }
@@ -142,42 +184,42 @@ class CouchDBClient {
 
     beforeCreate(document)
 
-    def documentAsJson = moshi.adapter(Map).toJson(document)
-    def body = RequestBody.create(documentAsJson, parse("application/json"))
+    String documentAsJson = moshi.adapter(Map).toJson(document)
+    RequestBody body = RequestBody.create(documentAsJson, parse("application/json"))
 
-    def builder = new Request.Builder()
+    Request.Builder builder = new Request.Builder()
     if (document['_id']) {
       String docId = document['_id']
       docId = sanitizeDocId(docId)
       builder = builder
-          .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}")
+          .url("${getBaseUrl()}/${db.toLowerCase()}/${docId}")
           .put(body)
     }
     else {
       builder = builder
-          .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}")
+          .url("${getBaseUrl()}/${db.toLowerCase()}")
           .post(body)
     }
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
     }
-    def request = builder.build()
+    Request request = builder.build()
 
-    def response = client.newCall(request).execute()
+    Response response = client.newCall(request).execute()
 
-    def result = consume(response.body().byteStream())
+    Map result = consume(response.body().byteStream())
     if (!result.ok) {
       log.error("error {}", result)
       throw new IllegalStateException("error creating document")
     }
 
-    def createdDocument = moshi.adapter(Object).fromJson(documentAsJson)
+    Map createdDocument = moshi.adapter(Map).fromJson(documentAsJson)
     createdDocument['_id'] = result.id
     createdDocument['_rev'] = result.rev
     return createdDocument
   }
 
-  def update(String db, def document) {
+  def update(String db, Map document) {
     if (document == null) {
       throw new IllegalArgumentException("document may not be null")
     }
@@ -187,34 +229,34 @@ class CouchDBClient {
 
     beforeUpdate(document)
 
-    def documentAsJson = moshi.adapter(Map).toJson(document)
-    def body = RequestBody.create(documentAsJson, parse("application/json"))
+    String documentAsJson = moshi.adapter(Map).toJson(document)
+    RequestBody body = RequestBody.create(documentAsJson, parse("application/json"))
 
     def builder = new Request.Builder()
     String docId = document['_id']
     docId = sanitizeDocId(docId)
     builder = builder
-        .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}")
+        .url("${getBaseUrl()}/${db.toLowerCase()}/${docId}")
         .put(body)
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
     }
-    def request = builder.build()
+    Request request = builder.build()
 
-    def response = client.newCall(request).execute()
+    Response response = client.newCall(request).execute()
 
-    def result = consume(response.body().byteStream())
+    Map result = consume(response.body().byteStream())
     if (!result.ok) {
       log.error("error {}", result)
       throw new IllegalStateException("error updating document")
     }
 
-    def updatedDocument = moshi.adapter(Object).fromJson(documentAsJson)
+    Map updatedDocument = moshi.adapter(Map).fromJson(documentAsJson)
     updatedDocument['_rev'] = result.rev
     return updatedDocument
   }
 
-  def updateBulk(String db, List documents) {
+  List<Map> updateBulk(String db, List<Map> documents) {
     if (documents == null) {
       throw new IllegalArgumentException("documents may not be null")
     }
@@ -231,27 +273,27 @@ class CouchDBClient {
       }
     }
 
-    def updateDoc = [docs: documents]
+    Map updateDoc = [docs: documents]
 
-    def documentAsJson = moshi.adapter(Object).toJson(updateDoc)
-    def body = RequestBody.create(documentAsJson, parse("application/json"))
+    String documentAsJson = moshi.adapter(Map).toJson(updateDoc)
+    RequestBody body = RequestBody.create(documentAsJson, parse("application/json"))
 
-    def builder = new Request.Builder()
+    Request.Builder builder = new Request.Builder()
     builder = builder
-        .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/_bulk_docs")
+        .url("${getBaseUrl()}/${db.toLowerCase()}/_bulk_docs")
         .post(body)
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
     }
-    def request = builder.build()
+    Request request = builder.build()
 
-    def response = client.newCall(request).execute()
+    Response response = client.newCall(request).execute()
     if (!response.successful) {
       log.error("error {}", response.message())
       throw new IllegalStateException("bulk update failed")
     }
 
-    def result = consume(response.body().byteStream())
+    List result = consume(response.body().byteStream())
     [result, documents].transpose().each { updated, original ->
       if (updated.ok) {
         original._id = updated.id
@@ -267,16 +309,16 @@ class CouchDBClient {
     return result
   }
 
-  def containsDb(String db) {
-    def builder = new Request.Builder()
-        .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}")
+  boolean containsDb(String db) {
+    Request.Builder builder = new Request.Builder()
+        .url("${getBaseUrl()}/${db.toLowerCase()}")
         .head()
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
     }
-    def request = builder.build()
+    Request request = builder.build()
 
-    def response = client.newCall(request).execute()
+    Response response = client.newCall(request).execute()
 
     if (!response.successful) {
       if (response.code() == 404) {
@@ -293,17 +335,17 @@ class CouchDBClient {
   }
 
   def createDb(String db) {
-    def builder = new Request.Builder()
-        .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}")
+    Request.Builder builder = new Request.Builder()
+        .url("${getBaseUrl()}/${db.toLowerCase()}")
         .put(RequestBody.create('', parse("application/json")))
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
     }
-    def request = builder.build()
+    Request request = builder.build()
 
-    def response = client.newCall(request).execute()
+    Response response = client.newCall(request).execute()
 
-    def result = consume(response.body().byteStream())
+    Map result = consume(response.body().byteStream())
     if (!result.ok) {
       log.error("error {}", result)
       throw new IllegalStateException("error creating database")
@@ -312,17 +354,17 @@ class CouchDBClient {
   }
 
   def deleteDb(String db) {
-    def builder = new Request.Builder()
-        .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}")
+    Request.Builder builder = new Request.Builder()
+        .url("${getBaseUrl()}/${db.toLowerCase()}")
         .delete()
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
     }
-    def request = builder.build()
+    Request request = builder.build()
 
-    def response = client.newCall(request).execute()
+    Response response = client.newCall(request).execute()
 
-    def result = consume(response.body().byteStream())
+    Map result = consume(response.body().byteStream())
     if (!result.ok) {
       log.error("error {}", result)
       throw new IllegalStateException("error deleting database")
@@ -330,18 +372,18 @@ class CouchDBClient {
     return result
   }
 
-  def createFindAllDocsView(String db) {
-    def findAll = "function(doc) { emit(null, doc._id) }"
+  Map createFindAllDocsView(String db) {
+    String findAll = "function(doc) { emit(null, doc._id) }"
     return createView(db, "all", findAll, null)
   }
 
-  def createFindByPropertyView(String db, String propertyName) {
+  Map createFindByPropertyView(String db, String propertyName) {
     String findByProperty = "function(doc) { if (doc['${propertyName}']) { emit(doc['${propertyName}'], doc._id) } }"
     return createView(db, "by_${propertyName}", findByProperty, null)
   }
 
-  def createView(String db, String viewName, String mapFunction, String reduceFunction) {
-    def view = [:]
+  Map createView(String db, String viewName, String mapFunction, String reduceFunction) {
+    Map view = [:]
     if (mapFunction) {
       view['map'] = mapFunction
     }
@@ -350,7 +392,7 @@ class CouchDBClient {
     }
 
     String designDocId = "_design/${db.capitalize()}"
-    def newDesignDoc = [
+    Map newDesignDoc = [
         _id     : designDocId,
         language: "javascript",
         views   : [
@@ -358,10 +400,10 @@ class CouchDBClient {
         ]
     ]
 
-    def designDocExists = contains(db, designDocId)
+    boolean designDocExists = contains(db, designDocId)
     if (designDocExists) {
-      def currentDesignDoc = get(db, designDocId)
-      def mergedDesignDoc = merge(currentDesignDoc, newDesignDoc)
+      Map currentDesignDoc = get(db, designDocId)
+      Map mergedDesignDoc = merge(currentDesignDoc, newDesignDoc)
       if (mergedDesignDoc != currentDesignDoc) {
         update(db, mergedDesignDoc)
       }
@@ -372,17 +414,17 @@ class CouchDBClient {
     }
   }
 
-  def contains(String db, String docId) {
+  boolean contains(String db, String docId) {
     docId = sanitizeDocId(docId)
-    def builder = new Request.Builder()
-        .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}")
+    Request.Builder builder = new Request.Builder()
+        .url("${getBaseUrl()}/${db.toLowerCase()}/${docId}")
         .head()
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
     }
-    def request = builder.build()
+    Request request = builder.build()
 
-    def response = client.newCall(request).execute()
+    Response response = client.newCall(request).execute()
 
     if (!response.successful) {
       if (response.code() == 404) {
@@ -398,57 +440,58 @@ class CouchDBClient {
     }
   }
 
-  def get(String db, String docId) {
+  <R> R get(String db, String docId) {
     docId = sanitizeDocId(docId)
-    def builder = new Request.Builder()
-        .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}")
+    Request.Builder builder = new Request.Builder()
+        .url("${getBaseUrl()}/${db.toLowerCase()}/${docId}")
         .get()
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
     }
-    def request = builder.build()
+    Request request = builder.build()
 
-    def response = client.newCall(request).execute()
+    Response response = client.newCall(request).execute()
 
     if (!response.successful) {
       log.error("error getting document({}): {}/{}", docId, response.code(), response.message())
       throw new IllegalStateException("could not get doc with id '${docId}'")
     }
     else {
-      return consume(response.body().byteStream())
+      R doc = consume(response.body().byteStream())
+      return doc
     }
   }
 
-  def delete(String db, String docId, String rev) {
+  Map delete(String db, String docId, String rev) {
     docId = sanitizeDocId(docId)
-    def builder = new Request.Builder()
-        .url("http://${couchdbHost}:${couchdbPort}/${db.toLowerCase()}/${docId}?rev=${rev}")
+    Request.Builder builder = new Request.Builder()
+        .url("${getBaseUrl()}/${db.toLowerCase()}/${docId}?rev=${rev}")
         .delete()
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
     }
-    def request = builder.build()
+    Request request = builder.build()
 
-    def response = client.newCall(request).execute()
+    Response response = client.newCall(request).execute()
 
     if (!response.successful) {
       log.error("error deleting doc{ _id:{}, _rev:{} }: {}/{}", docId, rev, response.code(), response.message())
       throw new IllegalStateException("could not delete doc with id/rev '${docId}'/'${rev}'")
     }
     else {
-      def result = consume(response.body().byteStream())
+      Map result = consume(response.body().byteStream())
       return result
     }
   }
 
-  static def merge(def currentDoc, def changedDoc) {
+  static Map merge(Map currentDoc, Map changedDoc) {
     def mergedDoc = currentDoc + [:]
     mergedDoc.views = (currentDoc.views ?: [:]) + (changedDoc.views ?: [:])
     return mergedDoc
   }
 
-  def consume(InputStream stream) {
-    def result = moshi.adapter(Object).fromJson(Okio.buffer(Okio.source(stream)))
+  <R> R consume(InputStream stream) {
+    R result = moshi.adapter(Object).fromJson(Okio.buffer(Okio.source(stream)))
     Util.closeQuietly(stream)
     return result
   }
@@ -460,13 +503,13 @@ class CouchDBClient {
     docId
   }
 
-  def beforeCreate(def document) {
+  void beforeCreate(Map document) {
     if (!document.dateCreated) {
       document.dateCreated = LocalDate.now().toString()
     }
   }
 
-  def beforeUpdate(def document) {
+  void beforeUpdate(Map document) {
     document.dateUpdated = LocalDate.now().toString()
   }
 }
