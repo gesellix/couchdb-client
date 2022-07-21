@@ -8,7 +8,7 @@ plugins {
   id("signing")
   id("com.github.ben-manes.versions") version "0.42.0"
   id("net.ossindex.audit") version "0.4.11"
-  id("io.freefair.maven-central.validate-poms") version "6.5.0.2"
+  id("io.freefair.maven-central.validate-poms") version "6.5.0.3"
   id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
 }
 
@@ -30,7 +30,7 @@ dependencies {
   testImplementation("cglib:cglib-nodep:3.3.0")
   testImplementation("com.jayway.jsonpath:json-path:2.7.0")
   testImplementation("com.jayway.jsonpath:json-path-assert:2.7.0")
-  testImplementation("org.testcontainers:spock:1.17.2")
+  testImplementation("org.testcontainers:spock:1.17.3")
 
   implementation("com.squareup.okhttp3:okhttp:4.10.0")
   implementation("com.squareup.moshi:moshi:1.13.0")
