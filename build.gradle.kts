@@ -17,7 +17,7 @@ repositories {
 }
 
 val groovyVersion = "3.0.12"
-val kotlinVersion = "1.5.31"
+val kotlinVersion = "1.6.20"
 
 dependencies {
   implementation("org.codehaus.groovy:groovy:${groovyVersion}")
@@ -42,12 +42,12 @@ val dependencyVersions = listOf(
   "org.jetbrains:annotations:23.0.0",
   "org.slf4j:slf4j-api:1.7.36",
   "org.spockframework:spock-core:2.1-groovy-3.0",
-  "org.ow2.asm:asm:9.3"
+  "org.ow2.asm:asm:9.3",
 )
 
 val dependencyVersionsByGroup = mapOf(
   "org.jetbrains.kotlin" to kotlinVersion,
-  "org.codehaus.groovy" to groovyVersion
+  "org.codehaus.groovy" to groovyVersion,
 )
 
 configurations.all {
