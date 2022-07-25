@@ -16,17 +16,17 @@ repositories {
   mavenCentral()
 }
 
-val groovyVersion = "3.0.12"
+val groovyVersion = "4.0.4"
 val kotlinVersion = "1.6.20"
 
 dependencies {
-  implementation("org.codehaus.groovy:groovy:${groovyVersion}")
-  implementation("org.codehaus.groovy:groovy-json:${groovyVersion}")
+  implementation("org.apache.groovy:groovy:${groovyVersion}")
+  implementation("org.apache.groovy:groovy-json:${groovyVersion}")
 
   implementation("org.slf4j:slf4j-api:1.7.36")
   testRuntimeOnly("ch.qos.logback:logback-classic:1.2.11")
 
-  testImplementation("org.spockframework:spock-core:2.1-groovy-3.0")
+  testImplementation("org.spockframework:spock-core:2.2-M3-groovy-4.0")
   testImplementation("cglib:cglib-nodep:3.3.0")
   testImplementation("com.jayway.jsonpath:json-path:2.7.0")
   testImplementation("com.jayway.jsonpath:json-path-assert:2.7.0")
@@ -41,17 +41,32 @@ val dependencyVersions = listOf(
   "net.java.dev.jna:jna:5.12.1",
   "org.jetbrains:annotations:23.0.0",
   "org.slf4j:slf4j-api:1.7.36",
-  "org.spockframework:spock-core:2.1-groovy-3.0",
+  "org.spockframework:spock-core:2.2-M3-groovy-4.0",
   "org.ow2.asm:asm:9.3",
 )
 
 val dependencyVersionsByGroup = mapOf(
   "org.jetbrains.kotlin" to kotlinVersion,
+  "org.apache.groovy" to groovyVersion,
   "org.codehaus.groovy" to groovyVersion,
 )
 
 configurations.all {
   resolutionStrategy {
+    dependencySubstitution {
+      all {
+        requested.let {
+          if (it is ModuleComponentSelector && it.group == "org.codehaus.groovy") {
+            logger.lifecycle("substituting $it to groupId 'org.apache.groovy'")
+            useTarget(
+              "org.apache.groovy:${it.module}:${it.version}",
+              "Changed Maven coordinates since Groovy 4"
+            )
+          }
+        }
+      }
+    }
+
     failOnVersionConflict()
 
     force(dependencyVersions)
