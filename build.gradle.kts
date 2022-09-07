@@ -33,7 +33,7 @@ dependencies {
   testImplementation("org.testcontainers:spock:1.17.3")
 
   implementation("com.squareup.okhttp3:okhttp:4.10.0")
-  implementation("com.squareup.moshi:moshi:1.13.0")
+  implementation("com.squareup.moshi:moshi:1.14.0")
 }
 
 val dependencyVersions = listOf(
