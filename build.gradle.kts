@@ -24,7 +24,7 @@ dependencies {
   implementation("org.apache.groovy:groovy-json:${groovyVersion}")
 
   implementation("org.slf4j:slf4j-api:1.7.36")
-  testRuntimeOnly("ch.qos.logback:logback-classic:1.2.11")
+  testRuntimeOnly("ch.qos.logback:logback-classic:1.4.0")
 
   testImplementation("org.spockframework:spock-core:2.2-groovy-4.0")
   testImplementation("cglib:cglib-nodep:3.3.0")
