@@ -16,7 +16,7 @@ repositories {
   mavenCentral()
 }
 
-val groovyVersion = "4.0.4"
+val groovyVersion = "4.0.5"
 val kotlinVersion = "1.6.20"
 
 dependencies {
