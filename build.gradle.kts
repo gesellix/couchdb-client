@@ -30,16 +30,16 @@ dependencies {
   testImplementation("cglib:cglib-nodep:3.3.0")
   testImplementation("com.jayway.jsonpath:json-path:2.7.0")
   testImplementation("com.jayway.jsonpath:json-path-assert:2.7.0")
-  testImplementation("org.testcontainers:spock:1.17.5")
+  testImplementation("org.testcontainers:spock:1.17.6")
 
   implementation("com.squareup.okhttp3:okhttp:4.10.0")
   implementation("com.squareup.moshi:moshi:1.14.0")
 }
 
 val dependencyVersions = listOf(
-  "com.squareup.okio:okio:3.2.0",
+  "com.squareup.okio:okio:3.3.0",
   "net.java.dev.jna:jna:5.12.1",
-  "org.jetbrains:annotations:23.0.0",
+  "org.jetbrains:annotations:23.1.0",
   "org.slf4j:slf4j-api:1.7.36",
   "org.spockframework:spock-core:2.3-groovy-4.0",
   "org.ow2.asm:asm:9.4",
