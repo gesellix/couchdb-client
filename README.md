@@ -1,4 +1,4 @@
-[![Build Status](https://img.shields.io/github/workflow/status/gesellix/couchdb-client/Publish?style=for-the-badge)](https://github.com/gesellix/couchdb-client/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/gesellix/couchdb-client/cd.yml?branch=main&style=for-the-badge)](https://github.com/gesellix/couchdb-client/actions)
 [![Maven Central](https://img.shields.io/maven-central/v/de.gesellix/couchdb-client.svg?style=for-the-badge&maxAge=86400)](https://search.maven.org/search?q=g:de.gesellix%20AND%20a:couchdb-client)
 
 # A Groovy CouchDB Client
