@@ -20,6 +20,19 @@ val groovyVersion = "4.0.9"
 val kotlinVersion = "1.6.20"
 
 dependencies {
+  constraints {
+    listOf(
+      "com.squareup.okio:okio",
+      "com.squareup.okio:okio-jvm"
+    ).onEach {
+      implementation(it) {
+        version {
+          strictly("[3,4)")
+          prefer("3.3.0")
+        }
+      }
+    }
+  }
   implementation("org.apache.groovy:groovy:${groovyVersion}")
   implementation("org.apache.groovy:groovy-json:${groovyVersion}")
 
