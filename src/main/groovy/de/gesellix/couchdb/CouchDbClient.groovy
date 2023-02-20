@@ -1,13 +1,10 @@
 package de.gesellix.couchdb
 
-import com.squareup.moshi.Moshi
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.Response
-import okhttp3.internal.Util
-import okio.Okio
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -22,7 +19,7 @@ class CouchDbClient {
 
   OkHttpClient client
 
-  Moshi moshi
+  Json json
 
   boolean tlsEnabled
   String couchdbHost
@@ -34,9 +31,12 @@ class CouchDbClient {
   String couchdbPassword
 
   CouchDbClient() {
+    this(new JsonMoshi())
+  }
+
+  CouchDbClient(Json json) {
     this.client = new OkHttpClient()
-    this.moshi = new Moshi.Builder()
-        .build()
+    this.json = json
     this.tlsEnabled = false
     this.couchdbHost = "127.0.0.1"
     this.couchdbPort = 5984
@@ -94,15 +94,25 @@ class CouchDbClient {
   }
 
   def <R> R query(String db, String viewName, String key, boolean includeDocs = true) {
-    String encodedKey = moshi.adapter(String).toJson(key)
+    List<String> query = []
+    if (includeDocs) {
+      query.add("include_docs=${includeDocs}")
+    }
+//    if (group) {
+//      query.add("group=${group}")
+//    }
+    if (key) {
+      String encodedKey = json.encodeQueryValue(key)
+      query.add("key=${encodedKey}")
+    }
+    String queryAsString = query.join("&")
 
     Request.Builder builder = new Request.Builder()
         .url(getBaseUrl() +
              "/${db.toLowerCase()}" +
              "/_design/${db.capitalize()}" +
              "/_view/${viewName}" +
-             "?include_docs=${includeDocs}" +
-             "&key=${encodedKey}")
+             "?${queryAsString}")
         .get()
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
@@ -115,25 +125,34 @@ class CouchDbClient {
       throw new IOException(response.body().string())
     }
 
-    def result = consume(response.body().byteStream())
+    def result = json.consume(response.body().byteStream(), Map)
     result.rows.collect { row -> includeDocs ? row.doc : row }
   }
 
-  def <R> R query(String db, String viewName, Collection<String> keys, boolean includeDocs = true) {
-    String encodedKeys = moshi.adapter(Collection).toJson(keys)
+  def <R> R query(String db, String viewName, Collection<String> keys, boolean includeDocs = true, boolean group = false) {
+    List<String> query = []
+    if (includeDocs) {
+      query.add("include_docs=${includeDocs}")
+    }
+    if (group) {
+      query.add("group=${group}")
+    }
+    if (keys) {
+      String encodedKeys = json.encodeQueryValue(keys)
+      query.add("keys=${encodedKeys}")
+    }
+    String queryAsString = query.join("&")
 
     Request.Builder builder = new Request.Builder()
         .url(getBaseUrl() +
              "/${db.toLowerCase()}" +
              "/_design/${db.capitalize()}" +
              "/_view/${viewName}" +
-             "?include_docs=${includeDocs}" +
-             "&keys=${encodedKeys}")
+             "?${queryAsString}")
         .get()
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
     }
-
     Request request = builder.build()
 
     Response response = client.newCall(request).execute()
@@ -142,7 +161,7 @@ class CouchDbClient {
       throw new IOException(response.body().string())
     }
 
-    def result = consume(response.body().byteStream())
+    def result = json.consume(response.body().byteStream(), Map)
     result.rows.collect { row -> includeDocs ? row.doc : row }
   }
 
@@ -164,7 +183,7 @@ class CouchDbClient {
       throw new IllegalStateException("could not get all docs with")
     }
     else {
-      def allDocs = consume(response.body().byteStream())
+      def allDocs = json.consume(response.body().byteStream(), Map)
       allDocs = allDocs.rows.collect { row -> includeDocs ? row.doc : row }
       if (!includeDesignDoc) {
         allDocs = allDocs.grep { !it._id?.startsWith("_design/") && !it.id?.startsWith("_design/") }
@@ -184,7 +203,7 @@ class CouchDbClient {
 
     beforeCreate(document)
 
-    String documentAsJson = moshi.adapter(Map).toJson(document)
+    String documentAsJson = json.encodeDocument(document)
     RequestBody body = RequestBody.create(documentAsJson, parse("application/json"))
 
     Request.Builder builder = new Request.Builder()
@@ -207,13 +226,13 @@ class CouchDbClient {
 
     Response response = client.newCall(request).execute()
 
-    Map result = consume(response.body().byteStream())
+    Map result = json.consume(response.body().byteStream(), Map)
     if (!result.ok) {
       log.error("error {}", result)
       throw new IllegalStateException("error creating document")
     }
 
-    Map createdDocument = moshi.adapter(Map).fromJson(documentAsJson)
+    Map createdDocument = json.decodeDocument(documentAsJson, Map.class)
     createdDocument['_id'] = result.id
     createdDocument['_rev'] = result.rev
     return createdDocument
@@ -229,7 +248,7 @@ class CouchDbClient {
 
     beforeUpdate(document)
 
-    String documentAsJson = moshi.adapter(Map).toJson(document)
+    String documentAsJson = json.encodeDocument(document)
     RequestBody body = RequestBody.create(documentAsJson, parse("application/json"))
 
     def builder = new Request.Builder()
@@ -245,13 +264,13 @@ class CouchDbClient {
 
     Response response = client.newCall(request).execute()
 
-    Map result = consume(response.body().byteStream())
+    Map result = json.consume(response.body().byteStream(), Map)
     if (!result.ok) {
       log.error("error {}", result)
       throw new IllegalStateException("error updating document")
     }
 
-    Map updatedDocument = moshi.adapter(Map).fromJson(documentAsJson)
+    Map updatedDocument = json.decodeDocument(documentAsJson, Map.class)
     updatedDocument['_rev'] = result.rev
     return updatedDocument
   }
@@ -275,7 +294,7 @@ class CouchDbClient {
 
     Map updateDoc = [docs: documents]
 
-    String documentAsJson = moshi.adapter(Map).toJson(updateDoc)
+    String documentAsJson = json.encodeDocument(updateDoc)
     RequestBody body = RequestBody.create(documentAsJson, parse("application/json"))
 
     Request.Builder builder = new Request.Builder()
@@ -293,7 +312,7 @@ class CouchDbClient {
       throw new IllegalStateException("bulk update failed")
     }
 
-    List result = consume(response.body().byteStream())
+    List result = json.consume(response.body().byteStream(), List)
     [result, documents].transpose().each { updated, original ->
       if (updated.ok) {
         original._id = updated.id
@@ -345,7 +364,7 @@ class CouchDbClient {
 
     Response response = client.newCall(request).execute()
 
-    Map result = consume(response.body().byteStream())
+    Map result = json.consume(response.body().byteStream(), Map)
     if (!result.ok) {
       log.error("error {}", result)
       throw new IllegalStateException("error creating database")
@@ -364,7 +383,7 @@ class CouchDbClient {
 
     Response response = client.newCall(request).execute()
 
-    Map result = consume(response.body().byteStream())
+    Map result = json.consume(response.body().byteStream(), Map)
     if (!result.ok) {
       log.error("error {}", result)
       throw new IllegalStateException("error deleting database")
@@ -407,7 +426,7 @@ class CouchDbClient {
       if (mergedDesignDoc != currentDesignDoc) {
         update(db, mergedDesignDoc)
       }
-      return currentDesignDoc
+      return get(db, designDocId)
     }
     else {
       return update(db, newDesignDoc)
@@ -457,7 +476,9 @@ class CouchDbClient {
       throw new IllegalStateException("could not get doc with id '${docId}'")
     }
     else {
-      R doc = consume(response.body().byteStream())
+//      Type type = Types.newParameterizedType(List.class, String.class);
+//      R doc = json.consume(response.body().byteStream(), Class<R>)
+      R doc = json.consume(response.body().byteStream(), Map)
       return doc
     }
   }
@@ -479,7 +500,7 @@ class CouchDbClient {
       throw new IllegalStateException("could not delete doc with id/rev '${docId}'/'${rev}'")
     }
     else {
-      Map result = consume(response.body().byteStream())
+      Map result = json.consume(response.body().byteStream(), Map)
       return result
     }
   }
@@ -488,12 +509,6 @@ class CouchDbClient {
     def mergedDoc = currentDoc + [:]
     mergedDoc.views = (currentDoc.views ?: [:]) + (changedDoc.views ?: [:])
     return mergedDoc
-  }
-
-  <R> R consume(InputStream stream) {
-    R result = moshi.adapter(Object).fromJson(Okio.buffer(Okio.source(stream)))
-    Util.closeQuietly(stream)
-    return result
   }
 
   static def sanitizeDocId(String docId) {

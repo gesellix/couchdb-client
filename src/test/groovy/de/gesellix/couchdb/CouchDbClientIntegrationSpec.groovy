@@ -1,7 +1,6 @@
 package de.gesellix.couchdb
 
 import com.squareup.moshi.Moshi
-import okhttp3.OkHttpClient
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.spock.Testcontainers
@@ -17,11 +16,12 @@ class CouchDbClientIntegrationSpec extends Specification {
 
   static final int COUCHDB_PORT = 5984
 //    static final String COUCHDB_IMAGE = "couchdb:1.7.1"
-  static final String COUCHDB_IMAGE = "couchdb:2.3.1"
-//  static final String COUCHDB_IMAGE = "couchdb:3.2.1"
+  static final String COUCHDB_IMAGE = "couchdb:3.3.1"
   static GenericContainer couchdbContainer = new GenericContainer(COUCHDB_IMAGE)
+      .withEnv([
+          COUCHDB_USER    : System.env['couchdb.username'] as String ?: "admin",
+          COUCHDB_PASSWORD: System.env['couchdb.password'] as String ?: "admin"])
       .withExposedPorts(COUCHDB_PORT)
-//            .waitingFor(Wait.forHttp("/"))
       .waitingFor(Wait.forHttp("/_up"))
 
   // allows @Testcontainers to find the statically initialized container reference
@@ -35,14 +35,13 @@ class CouchDbClientIntegrationSpec extends Specification {
 
   def setupSpec() {
     client = new CouchDbClient(
-        client: new OkHttpClient(),
-        moshi: new Moshi.Builder()
-            .add(LocalDate, new LocalDateJsonAdapter())
-            .build(),
-        couchdbHost: System.env['couchdb.host'] ?: couchdbContainer.host,
-        couchdbPort: System.env['couchdb.port'] ?: couchdbContainer.getMappedPort(COUCHDB_PORT),
-        couchdbUsername: System.env['couchdb.username'] ?: null,
-        couchdbPassword: System.env['couchdb.password'] ?: null)
+        new JsonMoshi(
+            new Moshi.Builder()
+                .add(LocalDate, new LocalDateJsonAdapter())))
+    client.couchdbHost = System.env['couchdb.host'] ?: couchdbContainer.host
+    client.couchdbPort = System.env['couchdb.port'] ?: couchdbContainer.getMappedPort(COUCHDB_PORT)
+    client.couchdbUsername = System.env['couchdb.username'] ?: "admin"
+    client.couchdbPassword = System.env['couchdb.password'] ?: "admin"
     database = "test-db-${UUID.randomUUID()}"
   }
 
@@ -247,6 +246,44 @@ class CouchDbClientIntegrationSpec extends Specification {
 
     then:
     result._id == [docId1]
+  }
+
+  def "add a view with map and reduce"() {
+    when:
+    def viewMap = "function(doc) { if (doc['title']) { emit(doc['title'], doc._id) } }"
+    def viewReduce = "function(keys, values, rereduce) { return true }"
+    def result = client.createView(database, "suggestions", viewMap, viewReduce)
+
+    then:
+    result._id == "_design/${database.capitalize()}"
+    and:
+    // ensure that the new view has been merged into the existing design doc
+    result.views["by_a-property"]
+    and:
+    result.views["suggestions"].map == viewMap
+    and:
+    result.views["suggestions"].reduce == viewReduce
+  }
+
+  def "query unique keys"() {
+    given:
+    String docId1 = "test-id/${UUID.randomUUID()}"
+    client.create(database, [_id: docId1, 'a-property': "a-value-1", 'title': "A not so unique title"])
+    String docId2 = "test-id/${UUID.randomUUID()}"
+    client.create(database, [_id: docId2, 'a-property': "a-value-2", 'title': "A quite unique title"])
+    String docId3 = "test-id/${UUID.randomUUID()}"
+    client.create(database, [_id: docId3, 'a-property': "a-value-3", 'title': "A not so unique title"])
+
+    when:
+    List<Map<String, ?>> result = client.query(database, "suggestions", null, false, true)
+
+    then:
+    result.size() == 2
+    and:
+    result.collect { it.get('key') }.sort() == [
+        "A not so unique title",
+        "A quite unique title"
+    ].sort()
   }
 
   def "delete test database"() {
