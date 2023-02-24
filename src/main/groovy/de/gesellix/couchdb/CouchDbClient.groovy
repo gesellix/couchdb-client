@@ -8,6 +8,7 @@ import okhttp3.Response
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import java.lang.reflect.Type
 import java.time.LocalDate
 
 import static java.nio.charset.StandardCharsets.UTF_8
@@ -29,10 +30,6 @@ class CouchDbClient {
 
   String couchdbUsername
   String couchdbPassword
-
-  CouchDbClient() {
-    this(new JsonMoshi())
-  }
 
   CouchDbClient(Json json) {
     this.client = new OkHttpClient()
@@ -80,14 +77,12 @@ class CouchDbClient {
       if (response.code() == 404) {
         response.body().close()
         return false
-      }
-      else {
+      } else {
         log.error("error {}", response.message())
         response.body().close()
         throw new IllegalStateException("could not check for database existence")
       }
-    }
-    else {
+    } else {
       log.info(response.body().string())
       return true
     }
@@ -109,10 +104,10 @@ class CouchDbClient {
 
     Request.Builder builder = new Request.Builder()
         .url(getBaseUrl() +
-             "/${db.toLowerCase()}" +
-             "/_design/${db.capitalize()}" +
-             "/_view/${viewName}" +
-             "?${queryAsString}")
+            "/${db.toLowerCase()}" +
+            "/_design/${db.capitalize()}" +
+            "/_view/${viewName}" +
+            "?${queryAsString}")
         .get()
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
@@ -145,10 +140,10 @@ class CouchDbClient {
 
     Request.Builder builder = new Request.Builder()
         .url(getBaseUrl() +
-             "/${db.toLowerCase()}" +
-             "/_design/${db.capitalize()}" +
-             "/_view/${viewName}" +
-             "?${queryAsString}")
+            "/${db.toLowerCase()}" +
+            "/_design/${db.capitalize()}" +
+            "/_view/${viewName}" +
+            "?${queryAsString}")
         .get()
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
@@ -168,8 +163,8 @@ class CouchDbClient {
   def getAllDocs(String db, boolean includeDocs = true, boolean includeDesignDoc = false) {
     Request.Builder builder = new Request.Builder()
         .url("${getBaseUrl()}/${db.toLowerCase()}" +
-             "/_all_docs" +
-             "?include_docs=${includeDocs}")
+            "/_all_docs" +
+            "?include_docs=${includeDocs}")
         .get()
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
@@ -181,12 +176,49 @@ class CouchDbClient {
     if (!response.successful) {
       log.error("error getting all docs: {}/{}", response.code(), response.message())
       throw new IllegalStateException("could not get all docs with")
-    }
-    else {
+    } else {
       def allDocs = json.consume(response.body().byteStream(), Map)
       allDocs = allDocs.rows.collect { row -> includeDocs ? row.doc : row }
       if (!includeDesignDoc) {
         allDocs = allDocs.grep { !it._id?.startsWith("_design/") && !it.id?.startsWith("_design/") }
+      }
+      return allDocs
+    }
+  }
+
+  <R extends ViewQueryResponse<T>, T> R getAllDocs(Type R, String db, String startkeyDocId, Integer limit = null, boolean includeDocs = true, boolean includeDesignDoc = false) {
+    List<String> query = []
+    if (includeDocs) {
+      query.add("include_docs=${includeDocs}")
+    }
+    if (startkeyDocId) {
+      String docId = sanitizeDocId(startkeyDocId)
+      query.add("startkey_docid=${docId}")
+    }
+    if (limit != null) {
+      query.add("limit=${limit}")
+    }
+    String queryAsString = query.join("&")
+
+    Request.Builder builder = new Request.Builder()
+        .url("${getBaseUrl()}/${db.toLowerCase()}" +
+            "/_all_docs" +
+            "?${queryAsString}")
+        .get()
+    if (couchdbUsername && couchdbPassword) {
+      builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+    }
+    Request request = builder.build()
+
+    Response response = client.newCall(request).execute()
+
+    if (!response.successful) {
+      log.error("error getting all docs: {}/{}", response.code(), response.message())
+      throw new IllegalStateException("could not get all docs with")
+    } else {
+      R allDocs = json.consume(response.body().byteStream(), R)
+      if (!includeDesignDoc) {
+        allDocs.rows.removeIf { it.id?.startsWith("_design/") }
       }
       return allDocs
     }
@@ -213,8 +245,7 @@ class CouchDbClient {
       builder = builder
           .url("${getBaseUrl()}/${db.toLowerCase()}/${docId}")
           .put(body)
-    }
-    else {
+    } else {
       builder = builder
           .url("${getBaseUrl()}/${db.toLowerCase()}")
           .post(body)
@@ -286,8 +317,7 @@ class CouchDbClient {
     documents.each { document ->
       if (document['_id']) {
         beforeUpdate(document)
-      }
-      else if (!document.dateCreated) {
+      } else if (!document.dateCreated) {
         beforeCreate(document)
       }
     }
@@ -318,8 +348,7 @@ class CouchDbClient {
         original._id = updated.id
         original._rev = updated.rev
         return original
-      }
-      else {
+      } else {
         log.error("error {}", updated)
         return null
       }
@@ -342,13 +371,11 @@ class CouchDbClient {
     if (!response.successful) {
       if (response.code() == 404) {
         return false
-      }
-      else {
+      } else {
         log.error("error {}", response.message())
         throw new IllegalStateException("could not check for database existence")
       }
-    }
-    else {
+    } else {
       return true
     }
   }
@@ -427,8 +454,7 @@ class CouchDbClient {
         update(db, mergedDesignDoc)
       }
       return get(db, designDocId)
-    }
-    else {
+    } else {
       return update(db, newDesignDoc)
     }
   }
@@ -448,14 +474,32 @@ class CouchDbClient {
     if (!response.successful) {
       if (response.code() == 404) {
         return false
-      }
-      else {
+      } else {
         log.error("error {}", response.message())
         throw new IllegalStateException("could not check for doc existence")
       }
-    }
-    else {
+    } else {
       return true
+    }
+  }
+
+  Map getDbInfo(String db) {
+    Request.Builder builder = new Request.Builder()
+        .url("${getBaseUrl()}/${db.toLowerCase()}")
+        .get()
+    if (couchdbUsername && couchdbPassword) {
+      builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+    }
+    Request request = builder.build()
+
+    Response response = client.newCall(request).execute()
+
+    if (!response.successful) {
+      log.error("error getting db info({}): {}/{}", db, response.code(), response.message())
+      throw new IllegalStateException("could not get db info for '${db}'")
+    } else {
+      Map doc = json.consume(response.body().byteStream(), Map)
+      return doc
     }
   }
 
@@ -474,8 +518,7 @@ class CouchDbClient {
     if (!response.successful) {
       log.error("error getting document({}): {}/{}", docId, response.code(), response.message())
       throw new IllegalStateException("could not get doc with id '${docId}'")
-    }
-    else {
+    } else {
 //      Type type = Types.newParameterizedType(List.class, String.class);
 //      R doc = json.consume(response.body().byteStream(), Class<R>)
       R doc = json.consume(response.body().byteStream(), Map)
@@ -498,8 +541,7 @@ class CouchDbClient {
     if (!response.successful) {
       log.error("error deleting doc{ _id:{}, _rev:{} }: {}/{}", docId, rev, response.code(), response.message())
       throw new IllegalStateException("could not delete doc with id/rev '${docId}'/'${rev}'")
-    }
-    else {
+    } else {
       Map result = json.consume(response.body().byteStream(), Map)
       return result
     }
@@ -511,7 +553,7 @@ class CouchDbClient {
     return mergedDoc
   }
 
-  static def sanitizeDocId(String docId) {
+  static String sanitizeDocId(String docId) {
     if (!docId.startsWith('_')) {
       docId = URLEncoder.encode(docId, UTF_8.toString())
     }

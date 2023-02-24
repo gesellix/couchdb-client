@@ -1,4 +1,4 @@
-package de.gesellix.couchdb;
+package de.gesellix.couchdb.moshi;
 
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.JsonReader;
