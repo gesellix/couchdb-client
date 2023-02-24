@@ -1,4 +1,9 @@
-package de.gesellix.couchdb;
+package de.gesellix.couchdb.moshi;
+
+import com.squareup.moshi.Moshi;
+import de.gesellix.couchdb.Json;
+import okhttp3.internal.Util;
+import okio.Okio;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -6,19 +11,15 @@ import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Map;
 
-import com.squareup.moshi.Moshi;
-import okhttp3.internal.Util;
-import okio.Okio;
-
-public class JsonMoshi implements Json {
+public class MoshiJson implements Json {
 
   Moshi moshi;
 
-  public JsonMoshi() {
+  public MoshiJson() {
     this(new Moshi.Builder());
   }
 
-  public JsonMoshi(Moshi.Builder builder) {
+  public MoshiJson(Moshi.Builder builder) {
     this.moshi = builder.build();
   }
 
@@ -56,7 +57,6 @@ public class JsonMoshi implements Json {
 
   @Override
   public <T> T consume(InputStream stream, Type type) throws IOException {
-//    Type type = Types.newParameterizedType(List.class, String.class);
     T result = (T) moshi.adapter(type).fromJson(Okio.buffer(Okio.source(stream)));
     Util.closeQuietly(stream);
     return result;

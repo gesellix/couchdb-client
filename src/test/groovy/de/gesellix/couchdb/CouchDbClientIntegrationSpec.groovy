@@ -1,6 +1,11 @@
 package de.gesellix.couchdb
 
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import de.gesellix.couchdb.moshi.LocalDateJsonAdapter
+import de.gesellix.couchdb.moshi.MoshiJson
+import de.gesellix.couchdb.moshi.MoshiViewQueryResponse
+import de.gesellix.couchdb.moshi.NestedRevisionAdapter
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.spock.Testcontainers
@@ -8,6 +13,7 @@ import spock.lang.Shared
 import spock.lang.Specification
 import spock.lang.Stepwise
 
+import java.lang.reflect.Type
 import java.time.LocalDate
 
 @Testcontainers
@@ -35,9 +41,10 @@ class CouchDbClientIntegrationSpec extends Specification {
 
   def setupSpec() {
     client = new CouchDbClient(
-        new JsonMoshi(
+        new MoshiJson(
             new Moshi.Builder()
-                .add(LocalDate, new LocalDateJsonAdapter())))
+                .add(LocalDate, new LocalDateJsonAdapter())
+                .add(new NestedRevisionAdapter())))
     client.couchdbHost = System.env['couchdb.host'] ?: couchdbContainer.host
     client.couchdbPort = System.env['couchdb.port'] ?: couchdbContainer.getMappedPort(COUCHDB_PORT)
     client.couchdbUsername = System.env['couchdb.username'] ?: "admin"
@@ -284,6 +291,105 @@ class CouchDbClientIntegrationSpec extends Specification {
         "A not so unique title",
         "A quite unique title"
     ].sort()
+  }
+
+  def "iterate over all documents, includeDocs = false"() {
+    given:
+    String dbName = "database2"
+    client.createDb(dbName)
+
+    Type docType = Types.newParameterizedType(Map, String, Object)
+    Type resultType = Types.newParameterizedType(MoshiViewQueryResponse, docType)
+
+    int docCount = client.getDbInfo(dbName).doc_count
+    int max = 10
+    (1..max).each {
+      client.create(dbName, ["position": "ranged/$it".toString()])
+    }
+
+    boolean includeDocs = false
+    int pageSize = 4
+
+    when:
+    ViewQueryResponse<Map> docs1 = client.getAllDocs(resultType, dbName, null, pageSize + 1, includeDocs, false)
+    ViewQueryResponse<Map> docs2 = client.getAllDocs(resultType, dbName, docs1.rows.last().id, pageSize + 1, includeDocs, false)
+    ViewQueryResponse<Map> docs3 = client.getAllDocs(resultType, dbName, docs2.rows.last().id, pageSize + 1, includeDocs, false)
+    println("docs1: $docs1")
+    println("docs2: $docs2")
+    println("docs3: $docs3")
+
+    then:
+    docs1.totalRows == docCount + max
+    docs1.offset == 0 * pageSize
+    docs1.rows.size() == pageSize + 1
+    docs1.rows.first().id != null
+    docs1.rows.first().rev != null
+    and:
+    docs2.totalRows == docCount + max
+    docs2.offset == 1 * pageSize
+    docs2.rows.size() == pageSize + 1
+    docs2.rows.first().id == docs1.rows.last().id
+    docs2.rows.first().rev == docs1.rows.last().rev
+    and:
+    docs3.totalRows == docCount + max
+    docs3.offset == 2 * pageSize
+    docs3.rows.size() == (docs3.totalRows - docs3.offset) % pageSize
+    docs3.rows.first().id == docs2.rows.last().id
+    docs3.rows.first().rev == docs2.rows.last().rev
+
+    cleanup:
+    client.deleteDb(dbName)
+  }
+
+  def "iterate over all documents, includeDocs=true"() {
+    given:
+    String dbName = "database3"
+    client.createDb(dbName)
+
+    Type docType = Types.newParameterizedType(Map, String, Object)
+    Type resultType = Types.newParameterizedType(MoshiViewQueryResponse, docType)
+
+    int docCount = client.getDbInfo(dbName).doc_count
+    int max = 10
+    (1..max).each {
+      client.create(dbName, ["position": "ranged/$it".toString()])
+    }
+
+    boolean includeDocs = true
+    int pageSize = 4
+
+    when:
+    ViewQueryResponse<Map> docs1 = client.getAllDocs(resultType, dbName, null, pageSize + 1, includeDocs, false)
+    ViewQueryResponse<Map> docs2 = client.getAllDocs(resultType, dbName, docs1.rows.last().id, pageSize + 1, includeDocs, false)
+    ViewQueryResponse<Map> docs3 = client.getAllDocs(resultType, dbName, docs2.rows.last().id, pageSize + 1, includeDocs, false)
+    println("docs1: $docs1")
+    println("docs2: $docs2")
+    println("docs3: $docs3")
+
+    then:
+    docs1.totalRows == docCount + max
+    docs1.offset == 0 * pageSize
+    docs1.rows.size() == pageSize + 1
+    docs1.rows.first().id != null
+    docs1.rows.first().rev != null
+    docs1.rows.first().doc._rev == docs1.rows.first().rev
+    and:
+    docs2.totalRows == docCount + max
+    docs2.offset == 1 * pageSize
+    docs2.rows.size() == pageSize + 1
+    docs2.rows.first().id == docs1.rows.last().id
+    docs2.rows.first().rev == docs1.rows.last().rev
+    docs2.rows.first().doc._rev == docs1.rows.last().rev
+    and:
+    docs3.totalRows == docCount + max
+    docs3.offset == 2 * pageSize
+    docs3.rows.size() == (docs3.totalRows - docs3.offset) % pageSize
+    docs3.rows.first().id == docs2.rows.last().id
+    docs3.rows.first().rev == docs2.rows.last().rev
+    docs3.rows.first().doc._rev == docs2.rows.last().rev
+
+    cleanup:
+    client.deleteDb(dbName)
   }
 
   def "delete test database"() {
