@@ -1,5 +1,8 @@
 package de.gesellix.couchdb;
 
+import de.gesellix.couchdb.model.NonReducedViewQueryResponse;
+import de.gesellix.couchdb.model.RowReference;
+import de.gesellix.couchdb.model.ViewQueryResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -8,21 +11,22 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
-public class PagedViewIterator<T> implements Iterator<ViewQueryResponse<T>> {
+public class PagedViewIterator<KeyType, Row extends RowReference<KeyType>>
+    implements Iterator<ViewQueryResponse<KeyType, Row>> {
 
   private static final Logger log = LoggerFactory.getLogger(PagedViewIterator.class);
 
   private final int pageSize;
-  private final BiFunction<String, Integer, ViewQueryResponse<T>> pageProvider;
+  private final BiFunction<RowReference<KeyType>, Integer, ViewQueryResponse<KeyType, Row>> pageProvider;
 
-  String nextPageStartkeyDocId;
+  RowReference<KeyType> nextPage;
 
-  ViewQueryResponse<T> lastResult;
+  ViewQueryResponse<KeyType, Row> lastResult;
 
-  public PagedViewIterator(int pageSize, BiFunction<String, Integer, ViewQueryResponse<T>> pageProvider) {
+  public PagedViewIterator(int pageSize, BiFunction<RowReference<KeyType>, Integer, ViewQueryResponse<KeyType, Row>> pageProvider) {
     this.pageSize = pageSize;
     this.pageProvider = pageProvider;
-    this.nextPageStartkeyDocId = null;
+    this.nextPage = null;
     this.lastResult = null;
   }
 
@@ -32,48 +36,67 @@ public class PagedViewIterator<T> implements Iterator<ViewQueryResponse<T>> {
       // we didn't even try, yet
       return true;
     }
-    return nextPageStartkeyDocId != null;
+    return nextPage != null;
   }
 
   @Override
-  public ViewQueryResponse<T> next() {
+  public ViewQueryResponse<KeyType, Row> next() {
     if (!hasNext()) {
       throw new NoSuchElementException("no more pages available");
     }
-    ViewQueryResponse<T> fetched = fetch();
+    ViewQueryResponse<KeyType, Row> fetched = fetch();
     return fetched;
   }
 
-  private ViewQueryResponse<T> fetch() {
-    lastResult = pageProvider.apply(nextPageStartkeyDocId, pageSize + 1);
-    if (lastResult == null || lastResult.getRows() == null) {
-      throw new IllegalStateException("failed to fetch more rows. nextPageStartkeyDocId(" + nextPageStartkeyDocId + ")");
+  static String rowToString(RowReference<?> row) {
+    if (row == null) {
+      return "null";
     }
-    log.info("got result, totalRows({}), offset({}), rows({}), startkeyDocId({})",
-        lastResult.getTotalRows(), lastResult.getOffset(), lastResult.getRows().size(), nextPageStartkeyDocId);
+    return String.format("key=%s, docId=%s", row.getKey(), row.getDocId());
+  }
 
-    if (lastResult.getRows().size() == 0
-        || lastResult.getRows().size() >= (lastResult.getTotalRows() - lastResult.getOffset())) {
+  private ViewQueryResponse<KeyType, Row> fetch() {
+    lastResult = pageProvider.apply(nextPage, pageSize + 1);
+    if (lastResult == null || lastResult.getRows() == null) {
+      throw new IllegalStateException("failed to fetch more rows. nextPage(" + rowToString(nextPage) + ")");
+    }
+    if (lastResult instanceof NonReducedViewQueryResponse) {
+      NonReducedViewQueryResponse<?, ?> nonReducedLastResult = (NonReducedViewQueryResponse<?, ?>) lastResult;
+      log.info("got result, totalRows({}), offset({}), rows({}), nextPage({})",
+          nonReducedLastResult.getTotalRows(), nonReducedLastResult.getOffset(), lastResult.getRows().size(), rowToString(nextPage));
+    } else {
+      log.info("got result, rows({}), nextPage({})",
+          lastResult.getRows().size(), rowToString(nextPage));
+    }
+
+    if (lastResult.getRows().size() <= pageSize) {
       // finished
-      updateNextPageStartkeyDocId(null);
+      updateNextPage(null);
     } else {
       // safe for the next iteration
-      ViewQueryResponseRow<T> trailingRow = lastResult.getRows().remove(lastResult.getRows().size() - 1);
-      updateNextPageStartkeyDocId(trailingRow.getId());
+      Row trailingRow = lastResult.getRows().remove(lastResult.getRows().size() - 1);
+      updateNextPage(trailingRow);
     }
     return lastResult;
   }
 
-  private void updateNextPageStartkeyDocId(String nextPageStartkeyDocId) {
-    if (Objects.equals(this.nextPageStartkeyDocId, nextPageStartkeyDocId)) {
-      int offset = lastResult == null || lastResult.getOffset() == null ? -1 : lastResult.getOffset();
-      log.warn("startkeyDocId hasn't changed! previous({}) == next({}), lastResult.offset({})",
-          this.nextPageStartkeyDocId,
-          nextPageStartkeyDocId,
-          offset);
+  private void updateNextPage(RowReference<KeyType> nextPage) {
+    if (Objects.equals(this.nextPage, nextPage)) {
+      if (lastResult instanceof NonReducedViewQueryResponse) {
+        NonReducedViewQueryResponse<?, ?> nonReducedLastResult = (NonReducedViewQueryResponse<?, ?>) lastResult;
+        int offset = nonReducedLastResult.getOffset() == null ? -1 : nonReducedLastResult.getOffset();
+        log.info("nextPage hasn't changed: previous({}) == next({}), lastResult.offset({})",
+            rowToString(this.nextPage),
+            rowToString(nextPage),
+            offset);
+      } else {
+        log.info("nextPage hasn't changed: previous({}) == next({})",
+            rowToString(this.nextPage),
+            rowToString(nextPage));
+      }
       // throw exception?
-      nextPageStartkeyDocId = null;
+      nextPage = null;
     }
-    this.nextPageStartkeyDocId = nextPageStartkeyDocId;
+    this.nextPage = nextPage;
   }
 }

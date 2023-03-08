@@ -1,5 +1,8 @@
 package de.gesellix.couchdb
 
+import de.gesellix.couchdb.model.NonReducedViewQueryResponse
+import de.gesellix.couchdb.model.RowReference
+import groovy.transform.PackageScope
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -37,6 +40,15 @@ class CouchDbClient {
     this.tlsEnabled = false
     this.couchdbHost = "127.0.0.1"
     this.couchdbPort = 5984
+  }
+
+  @PackageScope
+  String getCurlCommandLine(String suffix) {
+    String authorization = ""
+    if (couchdbUsername && couchdbPassword) {
+      authorization = "-H \"Authorization: ${Credentials.basic(couchdbUsername, couchdbPassword)}\""
+    }
+    return "curl ${authorization} \"${getBaseUrl()}${suffix ?: ""}\""
   }
 
   void updateBaseUrl() {
@@ -186,7 +198,7 @@ class CouchDbClient {
     }
   }
 
-  <R extends ViewQueryResponse<T>, T> R getAllDocs(Type R, String db, String startkeyDocId, Integer limit = null, boolean includeDocs = true, boolean includeDesignDoc = false) {
+  <T extends RowReference<String>, R extends NonReducedViewQueryResponse<String, T>> R getAllDocs(Type R, String db, String startkeyDocId, Integer limit = null, boolean includeDocs = true, boolean includeDesignDoc = false) {
     List<String> query = []
     if (includeDocs) {
       query.add("include_docs=${includeDocs}")
@@ -218,6 +230,67 @@ class CouchDbClient {
     } else {
       R allDocs = json.consume(response.body().byteStream(), R)
       if (!includeDesignDoc) {
+        allDocs.rows.removeIf { it.id?.startsWith("_design/") }
+      }
+      return allDocs
+    }
+  }
+
+  <R> R queryPage(
+      Type R, String db, String designDocName, String viewName, boolean reduce,
+      String startkey, String startkeyDocId,
+      Integer skip = null, Integer limit = null,
+      boolean includeDocs = false, boolean includeDesignDoc = false) {
+
+    List<String> query = []
+    query.add("reduce=${reduce}")
+    if (reduce) {
+      query.add("group=true")
+    }
+    if (!reduce && includeDocs) {
+      query.add("include_docs=${includeDocs}")
+    }
+    if (startkey) {
+      query.add("startkey=${json.encodeQueryValue(startkey)}")
+    }
+    if (startkeyDocId) {
+      String docId = sanitizeDocId(startkeyDocId)
+      query.add("startkey_docid=${docId}")
+    }
+    if (skip != null) {
+      query.add("skip=${skip}")
+    }
+    if (limit != null) {
+      query.add("limit=${limit}")
+    }
+    String queryAsString = query.join("&")
+
+    Request.Builder builder = new Request.Builder()
+        .url("${getBaseUrl()}/${db.toLowerCase()}" +
+            // TODO with or without `_design/` prefix?
+            // if we expect `_design/` to be included, special cases like `/db/_all_docs` work as well
+//            "/_design/${designDocName}" +
+            "/${designDocName}" +
+            "/_view/${viewName}" +
+            "?${queryAsString}")
+        .get()
+    if (couchdbUsername && couchdbPassword) {
+      builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
+    }
+    Request request = builder.build()
+
+    Response response = client.newCall(request).execute()
+
+    if (!response.successful) {
+      if (response.body().contentLength() > 0) {
+        log.error("error querying view: {}/{}: {}", response.code(), response.message(), response.body().string())
+      } else {
+        log.error("error querying view: {}/{}", response.code(), response.message())
+      }
+      throw new IllegalStateException("could not query view")
+    } else {
+      R allDocs = json.consume(response.body().byteStream(), R)
+      if (!reduce && !includeDesignDoc) {
         allDocs.rows.removeIf { it.id?.startsWith("_design/") }
       }
       return allDocs

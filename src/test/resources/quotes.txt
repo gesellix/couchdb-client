@@ -1,0 +1,1 @@
+Source for the quotes.json: https://type.fit/api/quotes
