@@ -7,14 +7,14 @@ import de.gesellix.couchdb.model.NonReducedViewQueryResponse;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MoshiViewQueryResponse<KeyType, ValueType, DocType extends DocumentId> implements NonReducedViewQueryResponse<KeyType, MoshiViewQueryResponseRow<KeyType, ValueType, DocType>> {
+public class MoshiAllDocsViewQueryResponse<DocType extends DocumentId> implements NonReducedViewQueryResponse<String, MoshiAllDocsViewQueryResponseRow<DocType>> {
 
   @Json(name = "offset")
   private Integer offset;
   @Json(name = "total_rows")
   private Integer totalRows;
   @Json(name = "rows")
-  private List<MoshiViewQueryResponseRow<KeyType, ValueType, DocType>> rows = new ArrayList<>();
+  private List<MoshiAllDocsViewQueryResponseRow<DocType>> rows = new ArrayList<>();
   @Json(name = "update_seq")
   private Object updateSeq;
 
@@ -37,11 +37,12 @@ public class MoshiViewQueryResponse<KeyType, ValueType, DocType extends Document
   }
 
   @Override
-  public List<MoshiViewQueryResponseRow<KeyType, ValueType, DocType>> getRows() {
+  public List<MoshiAllDocsViewQueryResponseRow<DocType>> getRows() {
     return rows;
   }
 
-  public void setRows(List<MoshiViewQueryResponseRow<KeyType, ValueType, DocType>> rows) {
+
+  public void setRows(List<MoshiAllDocsViewQueryResponseRow<DocType>> rows) {
     this.rows = rows;
   }
 
