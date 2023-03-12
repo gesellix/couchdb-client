@@ -81,9 +81,6 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
         List, Types.newParameterizedType(Map, String, String)
     ))
     client.updateBulk(database, quotes)
-
-    // looks like querying the /_all_docs view to yield all rows requires some time to pass
-//    Thread.sleep(2000)
   }
 
   def "debug info"() {
@@ -137,9 +134,9 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
 
     when:
     MoshiAllDocsViewQueryResponse<MapWithDocumentId> page1 = client.getAllDocs(
-        resultType, database, null, pageSize, true, false)
+        resultType, database, null, pageSize, true, true)
     MoshiAllDocsViewQueryResponse<MapWithDocumentId> page2 = client.getAllDocs(
-        resultType, database, page1.rows.last().docId, pageSize, true, false)
+        resultType, database, page1.rows.last().docId, pageSize, true, true)
 
     then:
     page1.totalRows == 1645

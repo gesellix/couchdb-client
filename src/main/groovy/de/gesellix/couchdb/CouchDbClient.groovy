@@ -192,7 +192,12 @@ class CouchDbClient {
       def allDocs = json.consume(response.body().byteStream(), Map)
       allDocs = allDocs.rows.collect { row -> includeDocs ? row.doc : row }
       if (!includeDesignDoc) {
-        allDocs = allDocs.grep { !it._id?.startsWith("_design/") && !it.id?.startsWith("_design/") }
+        allDocs = allDocs.grep {
+//          if (it._id?.startsWith("_design/") || it.id?.startsWith("_design/")) {
+//            log.info("removing $it")
+//          }
+          !it._id?.startsWith("_design/") && !it.id?.startsWith("_design/")
+        }
       }
       return allDocs
     }
@@ -230,7 +235,12 @@ class CouchDbClient {
     } else {
       R allDocs = json.consume(response.body().byteStream(), R)
       if (!includeDesignDoc) {
-        allDocs.rows.removeIf { it.id?.startsWith("_design/") }
+        allDocs.rows.removeIf {
+//          if (it.id?.startsWith("_design/")) {
+//            log.info("removing $it")
+//          }
+          it.id?.startsWith("_design/")
+        }
       }
       return allDocs
     }
