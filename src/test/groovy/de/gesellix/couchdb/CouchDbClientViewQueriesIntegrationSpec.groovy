@@ -93,7 +93,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     println(quotesByAuthorReduced)
   }
 
-  def "query view with single key"() {
+  def "query view with a single key"() {
     given:
     def author = "Johann Wolfgang von Goethe"
     def expectedQuote = "In the end we retain from our studies only that which we practically apply."
@@ -107,6 +107,39 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     result.every { it.author == author }
     and:
     result.find { it.text == expectedQuote }
+  }
+
+  def "query view with a long key"() {
+    given:
+    int length = 10000
+    String author = "a-long-one: ${(1..length).collect { "x" }.join()}"
+    def createdDoc = client.create(database, [author: author, text: "for test"])
+
+    when:
+    int oldMaxQueryKeyLength = client.MAX_QUERY_KEY_LENGTH
+    // make it fail
+    client.MAX_QUERY_KEY_LENGTH = Integer.MAX_VALUE
+    boolean failed = false
+    try {
+      client.query(database, "by_author", author)
+    } catch (Exception ignored) {
+      failed = true
+      client.MAX_QUERY_KEY_LENGTH = oldMaxQueryKeyLength
+    }
+    List<Map> result = client.query(database, "by_author", author)
+
+    then:
+    // expected, so we're sure that we actually need a specific handling of long keys
+    failed
+    and:
+    result.size() == 1
+    and:
+    result.every { it.author == author }
+    and:
+    result.find { it.text == "for test" }
+
+    cleanup:
+    client.delete(database, createdDoc._id as String, createdDoc._rev as String)
   }
 
   def "query view with multiple keys"() {
@@ -123,6 +156,42 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     result.every { it.author == author }
     and:
     result.find { it.text == expectedQuote }
+  }
+
+  def "query view with multiple long keys"() {
+    given:
+    int length = 10000
+    String author1 = "a-long-one1: ${(1..length).collect { "x" }.join()}"
+    String author2 = "a-long-one2: ${(1..length).collect { "x" }.join()}"
+    def createdDoc1 = client.create(database, [author: author1, text: "for test"])
+    def createdDoc2 = client.create(database, [author: author2, text: "for test"])
+
+    when:
+    int oldMaxQueryKeyLength = client.MAX_QUERY_KEY_LENGTH
+    // make it fail
+    client.MAX_QUERY_KEY_LENGTH = Integer.MAX_VALUE
+    boolean failed = false
+    try {
+      client.query(database, "by_author", [author1, author2])
+    } catch (Exception ignored) {
+      failed = true
+      client.MAX_QUERY_KEY_LENGTH = oldMaxQueryKeyLength
+    }
+    List<Map> result = client.query(database, "by_author", [author1, author2])
+
+    then:
+    // expected, so we're sure that we actually need a specific handling of long keys
+    failed
+    and:
+    result.size() == 2
+    and:
+    result.every { it.author == author1 || it.author == author2 }
+    and:
+    result.find { it.text == "for test" }
+
+    cleanup:
+    client.delete(database, createdDoc1._id as String, createdDoc1._rev as String)
+    client.delete(database, createdDoc2._id as String, createdDoc2._rev as String)
   }
 
   def "page /_all_docs"() {
@@ -196,5 +265,44 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     page1.rows.first().getKey() == "A. A. Milne"
     page2.rows.first().getKey() == "Alan Watts"
     page1.rows.last().getKey() == page2.rows.first().getKey()
+  }
+
+  def "page /_view/a-view a long key, reduce=true"() {
+    given:
+    String designDocId = "_design/${database.capitalize()}"
+    def pageSize = 11
+    def resultType = Types.newParameterizedType(
+        MoshiReducedViewQueryResponse, String, RowWithAuthor)
+
+    int length = 10000
+    String author = "A long & epic \"one\": ${(1..length).collect { "x" }.join()}"
+    def createdDoc = client.create(database, [author: author, text: "for test"])
+
+    when:
+    int oldMaxQueryKeyLength = client.MAX_QUERY_KEY_LENGTH
+    // make it fail
+    client.MAX_QUERY_KEY_LENGTH = Integer.MAX_VALUE
+    boolean failed = false
+    try {
+      client.queryPage(
+          resultType, database, designDocId, "quotes-by-author", true,
+          author, null, null, pageSize, false, false)
+    } catch (Exception ignored) {
+      failed = true
+      client.MAX_QUERY_KEY_LENGTH = oldMaxQueryKeyLength
+    }
+    MoshiReducedViewQueryResponse<String, RowWithAuthor> page = client.queryPage(
+        resultType, database, designDocId, "quotes-by-author", true,
+        author, null, null, pageSize, false, false)
+
+    then:
+    // expected, so we're sure that we actually need a specific handling of long keys
+    failed
+    and:
+    page.rows.size() == pageSize
+    page.rows.first().getKey() == author
+
+    cleanup:
+    client.delete(database, createdDoc._id as String, createdDoc._rev as String)
   }
 }
