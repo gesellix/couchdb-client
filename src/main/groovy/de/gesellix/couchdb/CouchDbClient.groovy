@@ -23,6 +23,7 @@ class CouchDbClient {
 
   OkHttpClient client
 
+  int MAX_QUERY_KEY_LENGTH = 5000
   Json json
 
   boolean tlsEnabled
@@ -108,9 +109,16 @@ class CouchDbClient {
 //    if (group) {
 //      query.add("group=${group}")
 //    }
+    Map postBody = [:]
+    boolean doPost = false
     if (key) {
       String encodedKey = json.encodeQueryValue(key)
-      query.add("key=${encodedKey}")
+      if (encodedKey.length() > MAX_QUERY_KEY_LENGTH) {
+        doPost = true
+        postBody['key'] = key
+      } else {
+        query.add("key=${encodedKey}")
+      }
     }
     String queryAsString = query.join("&")
 
@@ -120,7 +128,12 @@ class CouchDbClient {
             "/_design/${db.capitalize()}" +
             "/_view/${viewName}" +
             "?${queryAsString}")
-        .get()
+    if (doPost) {
+      String documentAsJson = json.encodeDocument(postBody)
+      builder = builder.post(RequestBody.create(documentAsJson, parse("application/json")))
+    } else {
+      builder = builder.get()
+    }
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
     }
@@ -128,8 +141,12 @@ class CouchDbClient {
 
     Response response = client.newCall(request).execute()
     if (!response.successful) {
-      log.error("request failed: {}", request)
-      throw new IOException(response.body().string())
+      if (response.body().contentLength() > 0) {
+        log.error("error querying view: {}/{}: {}", response.code(), response.message(), response.body().string())
+      } else {
+        log.error("error querying view: {}/{}", response.code(), response.message())
+      }
+      throw new IllegalStateException("could not query view")
     }
 
     def result = json.consume(response.body().byteStream(), Map)
@@ -144,9 +161,16 @@ class CouchDbClient {
     if (group) {
       query.add("group=${group}")
     }
+    Map postBody = [:]
+    boolean doPost = false
     if (keys) {
       String encodedKeys = json.encodeQueryValue(keys)
-      query.add("keys=${encodedKeys}")
+      if (encodedKeys.length() > MAX_QUERY_KEY_LENGTH) {
+        doPost = true
+        postBody['keys'] = keys
+      } else {
+        query.add("keys=${encodedKeys}")
+      }
     }
     String queryAsString = query.join("&")
 
@@ -156,7 +180,12 @@ class CouchDbClient {
             "/_design/${db.capitalize()}" +
             "/_view/${viewName}" +
             "?${queryAsString}")
-        .get()
+    if (doPost) {
+      String documentAsJson = json.encodeDocument(postBody)
+      builder = builder.post(RequestBody.create(documentAsJson, parse("application/json")))
+    } else {
+      builder = builder.get()
+    }
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
     }
@@ -164,8 +193,12 @@ class CouchDbClient {
 
     Response response = client.newCall(request).execute()
     if (!response.successful) {
-      log.error("request failed: {}", request)
-      throw new IOException(response.body().string())
+      if (response.body().contentLength() > 0) {
+        log.error("error querying view: {}/{}: {}", response.code(), response.message(), response.body().string())
+      } else {
+        log.error("error querying view: {}/{}", response.code(), response.message())
+      }
+      throw new IllegalStateException("could not query view")
     }
 
     def result = json.consume(response.body().byteStream(), Map)
@@ -260,8 +293,16 @@ class CouchDbClient {
     if (!reduce && includeDocs) {
       query.add("include_docs=${includeDocs}")
     }
+    Map postBody = [:]
+    boolean doPost = false
     if (startkey) {
-      query.add("startkey=${json.encodeQueryValue(startkey)}")
+      String encodedKey = json.encodeQueryValue(startkey)
+      if (encodedKey.length() > MAX_QUERY_KEY_LENGTH) {
+        doPost = true
+        postBody['startkey'] = startkey
+      } else {
+        query.add("startkey=${encodedKey}")
+      }
     }
     if (startkeyDocId) {
       String docId = sanitizeDocId(startkeyDocId)
@@ -283,7 +324,12 @@ class CouchDbClient {
             "/${designDocName}" +
             "/_view/${viewName}" +
             "?${queryAsString}")
-        .get()
+    if (doPost) {
+      String documentAsJson = json.encodeDocument(postBody)
+      builder = builder.post(RequestBody.create(documentAsJson, parse("application/json")))
+    } else {
+      builder = builder.get()
+    }
     if (couchdbUsername && couchdbPassword) {
       builder = builder.header("Authorization", Credentials.basic(couchdbUsername, couchdbPassword))
     }
