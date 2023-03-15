@@ -109,6 +109,17 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     result.find { it.text == expectedQuote }
   }
 
+  def "query view with a url-incompatible key"() {
+    given:
+    String key = "Here, comes the sun: ü?ß & Co / ([{}])"
+
+    when:
+    List<Map> result = client.query(database, "by_author", key)
+
+    then:
+    result.empty
+  }
+
   def "query view with a long key"() {
     given:
     int length = 10000
@@ -203,9 +214,9 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
 
     when:
     MoshiAllDocsViewQueryResponse<MapWithDocumentId> page1 = client.getAllDocs(
-        resultType, database, null, pageSize, true, true)
+        resultType, database, null, null, pageSize, true, true)
     MoshiAllDocsViewQueryResponse<MapWithDocumentId> page2 = client.getAllDocs(
-        resultType, database, page1.rows.last().docId, pageSize, true, true)
+        resultType, database, page1.rows.last().key, null, pageSize, true, true)
 
     then:
     page1.totalRows == 1645
