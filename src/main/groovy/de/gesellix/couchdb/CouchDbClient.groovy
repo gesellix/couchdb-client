@@ -112,7 +112,7 @@ class CouchDbClient {
     Map postBody = [:]
     boolean doPost = false
     if (key) {
-      String encodedKey = json.encodeQueryValue(key)
+      String encodedKey = urlEncode(json.encodeQueryValue(key))
       if (encodedKey.length() > MAX_QUERY_KEY_LENGTH) {
         doPost = true
         postBody['key'] = key
@@ -219,8 +219,12 @@ class CouchDbClient {
     Response response = client.newCall(request).execute()
 
     if (!response.successful) {
-      log.error("error getting all docs: {}/{}", response.code(), response.message())
-      throw new IllegalStateException("could not get all docs with")
+      if (response.body().contentLength() > 0) {
+        log.error("error querying all_docs: {}/{}: {}", response.code(), response.message(), response.body().string())
+      } else {
+        log.error("error querying all_docs: {}/{}", response.code(), response.message())
+      }
+      throw new IllegalStateException("could not query all_docs")
     } else {
       def allDocs = json.consume(response.body().byteStream(), Map)
       allDocs = allDocs.rows.collect { row -> includeDocs ? row.doc : row }
@@ -236,10 +240,15 @@ class CouchDbClient {
     }
   }
 
-  <T extends RowReference<String>, R extends NonReducedViewQueryResponse<String, T>> R getAllDocs(Type R, String db, String startkeyDocId, Integer limit = null, boolean includeDocs = true, boolean includeDesignDoc = false) {
+  <T extends RowReference<String>, R extends NonReducedViewQueryResponse<String, T>> R getAllDocs(
+      Type R, String db, String startkey, String startkeyDocId,
+      Integer limit = null, boolean includeDocs = true, boolean includeDesignDoc = false) {
     List<String> query = []
     if (includeDocs) {
       query.add("include_docs=${includeDocs}")
+    }
+    if (startkey) {
+      query.add("startkey=${urlEncode(json.encodeQueryValue(startkey))}")
     }
     if (startkeyDocId) {
       String docId = sanitizeDocId(startkeyDocId)
@@ -263,8 +272,12 @@ class CouchDbClient {
     Response response = client.newCall(request).execute()
 
     if (!response.successful) {
-      log.error("error getting all docs: {}/{}", response.code(), response.message())
-      throw new IllegalStateException("could not get all docs with")
+      if (response.body().contentLength() > 0) {
+        log.error("error querying all_docs: {}/{}: {}", response.code(), response.message(), response.body().string())
+      } else {
+        log.error("error querying all_docs: {}/{}", response.code(), response.message())
+      }
+      throw new IllegalStateException("could not query all_docs")
     } else {
       R allDocs = json.consume(response.body().byteStream(), R)
       if (!includeDesignDoc) {
@@ -296,7 +309,7 @@ class CouchDbClient {
     Map postBody = [:]
     boolean doPost = false
     if (startkey) {
-      String encodedKey = json.encodeQueryValue(startkey)
+      String encodedKey = urlEncode(json.encodeQueryValue(startkey))
       if (encodedKey.length() > MAX_QUERY_KEY_LENGTH) {
         doPost = true
         postBody['startkey'] = startkey
@@ -684,9 +697,13 @@ class CouchDbClient {
 
   static String sanitizeDocId(String docId) {
     if (!docId.startsWith('_')) {
-      docId = URLEncoder.encode(docId, UTF_8.toString())
+      docId = urlEncode(docId)
     }
     docId
+  }
+
+  static String urlEncode(String value) {
+    return URLEncoder.encode(value, UTF_8.toString())
   }
 
   void beforeCreate(Map document) {
