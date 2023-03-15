@@ -48,25 +48,18 @@ public class PagedViewIterator<KeyType, Row extends RowReference<KeyType>>
     return fetched;
   }
 
-  static String rowToString(RowReference<?> row) {
-    if (row == null) {
-      return "null";
-    }
-    return String.format("key=%s, docId=%s", row.getKey(), row.getDocId());
-  }
-
   private ViewQueryResponse<KeyType, Row> fetch() {
     lastResult = pageProvider.apply(nextPage, pageSize + 1);
     if (lastResult == null || lastResult.getRows() == null) {
-      throw new IllegalStateException("failed to fetch more rows. nextPage(" + rowToString(nextPage) + ")");
+      throw new IllegalStateException("failed to fetch more rows. nextPage(" + RowReference.toString(nextPage) + ")");
     }
     if (lastResult instanceof NonReducedViewQueryResponse) {
       NonReducedViewQueryResponse<?, ?> nonReducedLastResult = (NonReducedViewQueryResponse<?, ?>) lastResult;
       log.info("got result, totalRows({}), offset({}), rows({}), nextPage({})",
-          nonReducedLastResult.getTotalRows(), nonReducedLastResult.getOffset(), lastResult.getRows().size(), rowToString(nextPage));
+          nonReducedLastResult.getTotalRows(), nonReducedLastResult.getOffset(), lastResult.getRows().size(), RowReference.toString(nextPage));
     } else {
       log.info("got result, rows({}), nextPage({})",
-          lastResult.getRows().size(), rowToString(nextPage));
+          lastResult.getRows().size(), RowReference.toString(nextPage));
     }
 
     if (lastResult.getRows().size() <= pageSize) {
@@ -86,13 +79,13 @@ public class PagedViewIterator<KeyType, Row extends RowReference<KeyType>>
         NonReducedViewQueryResponse<?, ?> nonReducedLastResult = (NonReducedViewQueryResponse<?, ?>) lastResult;
         int offset = nonReducedLastResult.getOffset() == null ? -1 : nonReducedLastResult.getOffset();
         log.info("nextPage hasn't changed: previous({}) == next({}), lastResult.offset({})",
-            rowToString(this.nextPage),
-            rowToString(nextPage),
+            RowReference.toString(this.nextPage),
+            RowReference.toString(nextPage),
             offset);
       } else {
         log.info("nextPage hasn't changed: previous({}) == next({})",
-            rowToString(this.nextPage),
-            rowToString(nextPage));
+            RowReference.toString(this.nextPage),
+            RowReference.toString(nextPage));
       }
       // throw exception?
       nextPage = null;
