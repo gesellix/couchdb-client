@@ -242,7 +242,7 @@ class CouchDbClient {
 
   <T extends RowReference<String>, R extends NonReducedViewQueryResponse<String, T>> R getAllDocs(
       Type R, String db, String startkey, String startkeyDocId,
-      Integer limit = null, boolean includeDocs = true, boolean includeDesignDoc = true) {
+      Integer limit = null, boolean includeDocs = true) {
     List<String> query = []
     if (includeDocs) {
       query.add("include_docs=${includeDocs}")
@@ -280,19 +280,6 @@ class CouchDbClient {
       throw new IllegalStateException("could not query all_docs")
     } else {
       R allDocs = json.consume(response.body().byteStream(), R)
-      if (!includeDesignDoc) {
-        log.warn(
-            "includeDesignDoc==false, but we're going to ignore the setting and retain _design/* documents in the result." +
-                "Please remove any _design/* documents in your application code.")
-        // Removing _design/* documents is disabled, because it would break the PagedViewIterator,
-        // which calculates `hasNext()` based on the difference of queried vs. returned number of rows.
-//        allDocs.rows.removeIf {
-////          if (it.id?.startsWith("_design/")) {
-////            log.info("removing $it")
-////          }
-//          it.id?.startsWith("_design/")
-//        }
-      }
       return allDocs
     }
   }

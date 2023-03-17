@@ -214,9 +214,9 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
 
     when:
     MoshiAllDocsViewQueryResponse<MapWithDocumentId> page1 = client.getAllDocs(
-        resultType, database, null, null, pageSize, true, true)
+        resultType, database, null, null, pageSize, true)
     MoshiAllDocsViewQueryResponse<MapWithDocumentId> page2 = client.getAllDocs(
-        resultType, database, page1.rows.last().key, null, pageSize, true, true)
+        resultType, database, page1.rows.last().key, null, pageSize, true)
 
     then:
     page1.totalRows == 1645
@@ -225,6 +225,25 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     page2.totalRows == page2.totalRows
     page2.rows.size() == pageSize
     page1.rows.last().docId == page2.rows.first().docId
+  }
+
+  def "page /_all_docs should not remove _design/ documents"() {
+    given:
+    def approximateDocumentCount = 1700
+    def resultType = Types.newParameterizedType(
+        MoshiAllDocsViewQueryResponse, Types.newParameterizedType(
+        MapWithDocumentId, Object))
+
+    when:
+    MoshiAllDocsViewQueryResponse<MapWithDocumentId> page1 = client.getAllDocs(
+        resultType, database, null, null, approximateDocumentCount, true)
+
+    then:
+    page1.totalRows < approximateDocumentCount
+    and:
+    page1.rows
+        .collect { it.docId }
+        .findAll { it.startsWith("_design/") }.size() == 1
   }
 
   def "page /_view/a-view, reduce=false"() {
