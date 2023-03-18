@@ -102,6 +102,11 @@ class CouchDbClient {
   }
 
   def <R> R query(String db, String viewName, String key, boolean includeDocs = true) {
+    String designDocId = "_design/${db.capitalize()}"
+    return query(db, designDocId, viewName, key, includeDocs)
+  }
+
+  def <R> R query(String db, String designDocId, String viewName, String key, boolean includeDocs = true) {
     List<String> query = []
     if (includeDocs) {
       query.add("include_docs=${includeDocs}")
@@ -125,7 +130,7 @@ class CouchDbClient {
     Request.Builder builder = new Request.Builder()
         .url(getBaseUrl() +
             "/${db.toLowerCase()}" +
-            "/_design/${db.capitalize()}" +
+            "/${designDocId}" +
             "/_view/${viewName}" +
             "?${queryAsString}")
     if (doPost) {
@@ -154,6 +159,11 @@ class CouchDbClient {
   }
 
   def <R> R query(String db, String viewName, Collection<String> keys, boolean includeDocs = true, boolean group = false) {
+    String designDocId = "_design/${db.capitalize()}"
+    return query(db, designDocId, viewName, keys, includeDocs, group)
+  }
+
+  def <R> R query(String db, String designDocId, String viewName, Collection<String> keys, boolean includeDocs = true, boolean group = false) {
     List<String> query = []
     if (includeDocs) {
       query.add("include_docs=${includeDocs}")
@@ -177,7 +187,7 @@ class CouchDbClient {
     Request.Builder builder = new Request.Builder()
         .url(getBaseUrl() +
             "/${db.toLowerCase()}" +
-            "/_design/${db.capitalize()}" +
+            "/${designDocId}" +
             "/_view/${viewName}" +
             "?${queryAsString}")
     if (doPost) {
@@ -285,7 +295,7 @@ class CouchDbClient {
   }
 
   <R> R queryPage(
-      Type R, String db, String designDocName, String viewName, boolean reduce,
+      Type R, String db, String designDocId, String viewName, boolean reduce,
       String startkey, String startkeyDocId,
       Integer skip = null, Integer limit = null,
       boolean includeDocs = false, boolean includeDesignDoc = false) {
@@ -323,10 +333,7 @@ class CouchDbClient {
 
     Request.Builder builder = new Request.Builder()
         .url("${getBaseUrl()}/${db.toLowerCase()}" +
-            // TODO with or without `_design/` prefix?
-            // if we expect `_design/` to be included, special cases like `/db/_all_docs` work as well
-//            "/_design/${designDocName}" +
-            "/${designDocName}" +
+            "/${designDocId}" +
             "/_view/${viewName}" +
             "?${queryAsString}")
     if (doPost) {
@@ -563,6 +570,11 @@ class CouchDbClient {
   }
 
   Map createView(String db, String viewName, String mapFunction, String reduceFunction) {
+    String designDocId = "_design/${db.capitalize()}"
+    return createView(db, designDocId, viewName, mapFunction, reduceFunction)
+  }
+
+  Map createView(String db, String designDocId, String viewName, String mapFunction, String reduceFunction) {
     Map view = [:]
     if (mapFunction) {
       view['map'] = mapFunction
@@ -571,7 +583,6 @@ class CouchDbClient {
       view['reduce'] = reduceFunction
     }
 
-    String designDocId = "_design/${db.capitalize()}"
     Map newDesignDoc = [
         _id     : designDocId,
         language: "javascript",
