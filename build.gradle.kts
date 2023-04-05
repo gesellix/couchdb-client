@@ -43,7 +43,7 @@ dependencies {
   testImplementation("cglib:cglib-nodep:3.3.0")
   testImplementation("com.jayway.jsonpath:json-path:2.7.0")
   testImplementation("com.jayway.jsonpath:json-path-assert:2.7.0")
-  testImplementation("org.testcontainers:spock:1.17.6")
+  testImplementation("org.testcontainers:spock:1.18.0")
 
   implementation("com.squareup.okhttp3:okhttp:4.10.0")
   implementation("com.squareup.moshi:moshi:1.14.0")
