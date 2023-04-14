@@ -40,20 +40,29 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
   @Shared
   CouchDbClient client
   @Shared
-  String database
+  Json json
 
-  def setupSpec() {
+  @Shared
+  String quotesDatabase
+  @Shared
+  String authorsDatabase
+
+  void setupSpec() {
     client = new CouchDbClient(
         new MoshiJson(
             new Moshi.Builder()
                 .add(LocalDate, new LocalDateJsonAdapter())
                 .add(new NestedRevisionAdapter())
                 .add(new MapWithDocumentIdAdapter())
-                .add(new RowWithAuthorAdapter())))
+                .add(new RowWithStringKeyAdapter())
+                .add(new RowWithComplexKeyAdapter())
+        ))
     client.couchdbHost = System.env['couchdb.host'] ?: couchdbContainer.host
     client.couchdbPort = System.env['couchdb.port'] ?: couchdbContainer.getMappedPort(COUCHDB_PORT)
     client.couchdbUsername = System.env['couchdb.username'] ?: "admin"
     client.couchdbPassword = System.env['couchdb.password'] ?: "admin"
+
+    json = new MoshiJson()
 
     prepareViews()
     createDocuments()
@@ -61,35 +70,63 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
 
   void cleanupSpec() {
     if (couchdbContainer.isRunning()) {
-      !client.containsDb(database) || client.deleteDb(database)
+      !client.containsDb(quotesDatabase) || client.deleteDb(quotesDatabase)
+      !client.containsDb(authorsDatabase) || client.deleteDb(authorsDatabase)
     }
   }
 
   void prepareViews() {
-    database = "test-db-${UUID.randomUUID()}"
-    client.createDb(database)
-    client.createFindByPropertyView(database, "author")
-    client.createView(database,
+    quotesDatabase = "test-db-quotes-${UUID.randomUUID()}"
+    client.createDb(quotesDatabase)
+    client.createFindByPropertyView(quotesDatabase, "author")
+    client.createView(quotesDatabase,
         "quotes-by-author",
         "function(doc) { if (doc['author']) { emit(doc['author'], doc._id) } }",
         "function(keys, values, rereduce) { return true }")
+
+    authorsDatabase = "test-db-authors-${UUID.randomUUID()}"
+    client.createDb(authorsDatabase)
+    client.createFindByPropertyView(authorsDatabase, "name")
+    client.createView(authorsDatabase,
+        "top-work-by-author",
+        "function(doc) { if (doc['name'] && doc['top_work']) { emit([doc['top_work'], doc['name']], 1) } }",
+        "_sum")
   }
 
   void createDocuments() {
-    List<Map<String, String>> quotes = new MoshiJson().consume(getClass().getResourceAsStream("/quotes.json"), Types.newParameterizedType(
-        List, Types.newParameterizedType(Map, String, String)
-    ))
-    client.updateBulk(database, quotes)
+    List<Map<String, String>> quotes = json.consume(
+        getClass().getResourceAsStream("/quotes.json"),
+        Types.newParameterizedType(
+            List, Types.newParameterizedType(
+            Map, String, String)
+        ))
+    client.updateBulk(quotesDatabase, quotes)
+
+    Map<String, List<Map<String, Object>>> authors = json.consume(
+        getClass().getResourceAsStream("/authors.json"),
+        Types.newParameterizedType(
+            Map, String, Object
+        ))
+    List<?> docs = authors.get("docs")
+    docs.each { doc ->
+      doc.removeAll { it.getKey().startsWith("_") }
+    }
+    client.updateBulk(authorsDatabase, docs)
   }
 
   void "debug info"() {
     expect:
-    String allDocs = "${client.getCurlCommandLine("/" + database + "/_all_docs?limit=2&include_docs=true")}"
-    String quotesByAuthor = "${client.getCurlCommandLine("/" + database + "/_design/${database.capitalize()}/_view/quotes-by-author?limit=2&include_docs=true&reduce=false")}"
-    String quotesByAuthorReduced = "${client.getCurlCommandLine("/" + database + "/_design/${database.capitalize()}/_view/quotes-by-author?limit=2&reduce=true&group=true")}"
-    println(allDocs)
+    String allQuotes = "${client.getCurlCommandLine("/${quotesDatabase}/_all_docs?limit=2&include_docs=true")}"
+    println(allQuotes)
+    String quotesByAuthor = "${client.getCurlCommandLine("/${quotesDatabase}/_design/${quotesDatabase.capitalize()}/_view/quotes-by-author?limit=2&include_docs=true&reduce=false")}"
     println(quotesByAuthor)
+    String quotesByAuthorReduced = "${client.getCurlCommandLine("/${quotesDatabase}/_design/${quotesDatabase.capitalize()}/_view/quotes-by-author?limit=2&reduce=true&group=true")}"
     println(quotesByAuthorReduced)
+
+    String allAuthors = "${client.getCurlCommandLine("/${authorsDatabase}/_all_docs?limit=2&include_docs=true")}"
+    println(allAuthors)
+    String topWorkByAuthorReduced = "${client.getCurlCommandLine("/${authorsDatabase}/_design/${authorsDatabase.capitalize()}/_view/top-work-by-author?limit=2&reduce=true&group=true")}"
+    println(topWorkByAuthorReduced)
   }
 
   void "query view with a single key"() {
@@ -98,7 +135,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     def expectedQuote = "In the end we retain from our studies only that which we practically apply."
 
     when:
-    List<Map> result = client.query(database, "by_author", author)
+    List<Map> result = client.query(quotesDatabase, "by_author", author)
 
     then:
     result.size() == 16
@@ -113,7 +150,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     String key = "Here, comes the sun: ü?ß & Co / ([{}])"
 
     when:
-    List<Map> result = client.query(database, "by_author", key)
+    List<Map> result = client.query(quotesDatabase, "by_author", key)
 
     then:
     result.empty
@@ -123,7 +160,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     given:
     int length = 10000
     String author = "a-long-one: ${(1..length).collect { "x" }.join()}"
-    def createdDoc = client.create(database, [author: author, text: "for test"])
+    def createdDoc = client.create(quotesDatabase, [author: author, text: "for test"])
 
     when:
     int oldMaxQueryKeyLength = client.MAX_QUERY_KEY_LENGTH
@@ -131,12 +168,12 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     client.MAX_QUERY_KEY_LENGTH = Integer.MAX_VALUE
     boolean failed = false
     try {
-      client.query(database, "by_author", author)
+      client.query(quotesDatabase, "by_author", author)
     } catch (Exception ignored) {
       failed = true
       client.MAX_QUERY_KEY_LENGTH = oldMaxQueryKeyLength
     }
-    List<Map> result = client.query(database, "by_author", author)
+    List<Map> result = client.query(quotesDatabase, "by_author", author)
 
     then:
     // expected, so we're sure that we actually need a specific handling of long keys
@@ -149,7 +186,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     result.find { it.text == "for test" }
 
     cleanup:
-    client.delete(database, createdDoc._id as String, createdDoc._rev as String)
+    client.delete(quotesDatabase, createdDoc._id as String, createdDoc._rev as String)
   }
 
   void "query view with multiple keys"() {
@@ -158,7 +195,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     def expectedQuote = "In the end we retain from our studies only that which we practically apply."
 
     when:
-    List<Map> result = client.query(database, "by_author", [author, "unknown-key"])
+    List<Map> result = client.query(quotesDatabase, "by_author", [author, "unknown-key"])
 
     then:
     result.size() == 16
@@ -173,8 +210,8 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     int length = 10000
     String author1 = "a-long-one1: ${(1..length).collect { "x" }.join()}"
     String author2 = "a-long-one2: ${(1..length).collect { "x" }.join()}"
-    def createdDoc1 = client.create(database, [author: author1, text: "for test"])
-    def createdDoc2 = client.create(database, [author: author2, text: "for test"])
+    def createdDoc1 = client.create(quotesDatabase, [author: author1, text: "for test"])
+    def createdDoc2 = client.create(quotesDatabase, [author: author2, text: "for test"])
 
     when:
     int oldMaxQueryKeyLength = client.MAX_QUERY_KEY_LENGTH
@@ -182,12 +219,12 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     client.MAX_QUERY_KEY_LENGTH = Integer.MAX_VALUE
     boolean failed = false
     try {
-      client.query(database, "by_author", [author1, author2])
+      client.query(quotesDatabase, "by_author", [author1, author2])
     } catch (Exception ignored) {
       failed = true
       client.MAX_QUERY_KEY_LENGTH = oldMaxQueryKeyLength
     }
-    List<Map> result = client.query(database, "by_author", [author1, author2])
+    List<Map> result = client.query(quotesDatabase, "by_author", [author1, author2])
 
     then:
     // expected, so we're sure that we actually need a specific handling of long keys
@@ -200,8 +237,8 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     result.find { it.text == "for test" }
 
     cleanup:
-    client.delete(database, createdDoc1._id as String, createdDoc1._rev as String)
-    client.delete(database, createdDoc2._id as String, createdDoc2._rev as String)
+    client.delete(quotesDatabase, createdDoc1._id as String, createdDoc1._rev as String)
+    client.delete(quotesDatabase, createdDoc2._id as String, createdDoc2._rev as String)
   }
 
   void "page /_all_docs"() {
@@ -213,9 +250,9 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
 
     when:
     MoshiAllDocsViewQueryResponse<MapWithDocumentId> page1 = client.getAllDocs(
-        resultType, database, null, null, pageSize, true)
+        resultType, quotesDatabase, null, null, pageSize, true)
     MoshiAllDocsViewQueryResponse<MapWithDocumentId> page2 = client.getAllDocs(
-        resultType, database, page1.rows.last().key, null, pageSize, true)
+        resultType, quotesDatabase, page1.rows.last().key, null, pageSize, true)
 
     then:
     page1.totalRows == 1645
@@ -235,7 +272,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
 
     when:
     MoshiAllDocsViewQueryResponse<MapWithDocumentId> page1 = client.getAllDocs(
-        resultType, database, null, null, approximateDocumentCount, true)
+        resultType, quotesDatabase, null, null, approximateDocumentCount, true)
 
     then:
     page1.totalRows < approximateDocumentCount
@@ -247,7 +284,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
 
   void "page /_view/a-view, reduce=false"() {
     given:
-    String designDocId = "_design/${database.capitalize()}"
+    String designDocId = "_design/${quotesDatabase.capitalize()}"
     def pageSize = 11
     def resultType = Types.newParameterizedType(
         MoshiViewQueryResponse, String, String, Types.newParameterizedType(
@@ -255,10 +292,10 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
 
     when:
     MoshiViewQueryResponse<String, String, MapWithDocumentId<String>> page1 = client.queryPage(
-        resultType, database, designDocId, "quotes-by-author", false,
+        resultType, quotesDatabase, designDocId, "quotes-by-author", false,
         null, null, null, pageSize, true, false)
     MoshiViewQueryResponse<String, String, MapWithDocumentId<String>> page2 = client.queryPage(
-        resultType, database, designDocId, "quotes-by-author", false,
+        resultType, quotesDatabase, designDocId, "quotes-by-author", false,
         page1.rows.last().key, page1.rows.last().docId, null, pageSize, true, false)
 
     then:
@@ -275,17 +312,17 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
 
   void "page /_view/a-view, reduce=true"() {
     given:
-    String designDocId = "_design/${database.capitalize()}"
+    String designDocId = "_design/${quotesDatabase.capitalize()}"
     def pageSize = 11
     def resultType = Types.newParameterizedType(
-        MoshiReducedViewQueryResponse, String, RowWithAuthor)
+        MoshiReducedViewQueryResponse, String, RowWithStringKey)
 
     when:
-    MoshiReducedViewQueryResponse<String, RowWithAuthor> page1 = client.queryPage(
-        resultType, database, designDocId, "quotes-by-author", true,
+    MoshiReducedViewQueryResponse<String, RowWithStringKey> page1 = client.queryPage(
+        resultType, quotesDatabase, designDocId, "quotes-by-author", true,
         null, null, null, pageSize, false, false)
-    MoshiReducedViewQueryResponse<String, RowWithAuthor> page2 = client.queryPage(
-        resultType, database, designDocId, "quotes-by-author", true,
+    MoshiReducedViewQueryResponse<String, RowWithStringKey> page2 = client.queryPage(
+        resultType, quotesDatabase, designDocId, "quotes-by-author", true,
         page1.rows.last().getKey(), null, null, pageSize, false, false)
 
     then:
@@ -298,14 +335,14 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
 
   void "page /_view/a-view a long key, reduce=true"() {
     given:
-    String designDocId = "_design/${database.capitalize()}"
+    String designDocId = "_design/${quotesDatabase.capitalize()}"
     def pageSize = 11
     def resultType = Types.newParameterizedType(
-        MoshiReducedViewQueryResponse, String, RowWithAuthor)
+        MoshiReducedViewQueryResponse, String, RowWithStringKey)
 
     int length = 10000
     String author = "A long & epic \"one\": ${(1..length).collect { "x" }.join()}"
-    def createdDoc = client.create(database, [author: author, text: "for test"])
+    def createdDoc = client.create(quotesDatabase, [author: author, text: "for test"])
 
     when:
     int oldMaxQueryKeyLength = client.MAX_QUERY_KEY_LENGTH
@@ -314,14 +351,14 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     boolean failed = false
     try {
       client.queryPage(
-          resultType, database, designDocId, "quotes-by-author", true,
+          resultType, quotesDatabase, designDocId, "quotes-by-author", true,
           author, null, null, pageSize, false, false)
     } catch (Exception ignored) {
       failed = true
       client.MAX_QUERY_KEY_LENGTH = oldMaxQueryKeyLength
     }
-    MoshiReducedViewQueryResponse<String, RowWithAuthor> page = client.queryPage(
-        resultType, database, designDocId, "quotes-by-author", true,
+    MoshiReducedViewQueryResponse<String, RowWithStringKey> page = client.queryPage(
+        resultType, quotesDatabase, designDocId, "quotes-by-author", true,
         author, null, null, pageSize, false, false)
 
     then:
@@ -332,6 +369,30 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     page.rows.first().getKey() == author
 
     cleanup:
-    client.delete(database, createdDoc._id as String, createdDoc._rev as String)
+    client.delete(quotesDatabase, createdDoc._id as String, createdDoc._rev as String)
+  }
+
+  void "page /_view/a-view with a complex key, reduce=true"() {
+    given:
+    String designDocId = "_design/${authorsDatabase.capitalize()}"
+    def resultType = Types.newParameterizedType(
+        MoshiReducedViewQueryResponse, Types.newParameterizedType(List, String), RowWithComplexKey)
+    def topWork = "Until We Are Lost"
+    def author = "Lao-Tzu Allan-Blitz"
+
+    when:
+    MoshiReducedViewQueryResponse<List<String>, RowWithComplexKey> page = client.queryPage(
+        resultType, authorsDatabase,
+        designDocId, "top-work-by-author",
+        true, [topWork, author], null,
+        null, null,
+        false, false,
+        [topWork, [:]], null,
+        true)
+
+    then:
+    page.rows.size() == 1
+    and:
+    page.rows.first().get("key") == [topWork, author]
   }
 }

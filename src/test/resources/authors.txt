@@ -1,0 +1,1 @@
+Source for the quotes.json: https://openlibrary.org/search/authors.json?q=Lao%20Tzu

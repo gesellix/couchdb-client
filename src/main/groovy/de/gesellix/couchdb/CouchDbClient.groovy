@@ -296,9 +296,11 @@ class CouchDbClient {
 
   <R> R queryPage(
       Type R, String db, String designDocId, String viewName, boolean reduce,
-      String startkey, String startkeyDocId,
+      Object startkey, String startkeyDocId,
       Integer skip = null, Integer limit = null,
-      boolean includeDocs = false, boolean includeDesignDoc = false) {
+      boolean includeDocs = false, boolean includeDesignDoc = false,
+      Object endkey = null, String endkeyDocId = null,
+      boolean doPost = false) {
 
     List<String> query = []
     query.add("reduce=${reduce}")
@@ -309,8 +311,8 @@ class CouchDbClient {
       query.add("include_docs=${includeDocs}")
     }
     Map postBody = [:]
-    boolean doPost = false
     if (startkey) {
+      // TODO allow non-String and non-Collection<String> instances for startkey
       String encodedKey = urlEncode(json.encodeQueryValue(startkey))
       if (encodedKey.length() > MAX_QUERY_KEY_LENGTH) {
         doPost = true
@@ -322,6 +324,20 @@ class CouchDbClient {
     if (startkeyDocId) {
       String docId = sanitizeDocId(startkeyDocId)
       query.add("startkey_docid=${docId}")
+    }
+    if (endkey) {
+      // TODO allow non-String and non-Collection<String> instances for endkey
+      String encodedKey = urlEncode(json.encodeQueryValue(endkey))
+      if (encodedKey.length() > MAX_QUERY_KEY_LENGTH) {
+        doPost = true
+        postBody['endkey'] = endkey
+      } else {
+        query.add("endkey=${encodedKey}")
+      }
+    }
+    if (endkeyDocId) {
+      String docId = sanitizeDocId(endkeyDocId)
+      query.add("endkey_docid=${docId}")
     }
     if (skip != null) {
       query.add("skip=${skip}")

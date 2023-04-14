@@ -1,0 +1,210 @@
+{
+  "numFound": 18,
+  "start": 0,
+  "numFoundExact": true,
+  "docs": [
+    {
+      "key": "OL7790191A",
+      "type": "author",
+      "name": "Lao Tzu",
+      "top_work": "Tao Te Ching",
+      "work_count": 26,
+      "top_subjects": [
+        "Spirituality",
+        "Taoism",
+        "Philosophy",
+        "Taoist philosophy",
+        "Success",
+        "Religious literature",
+        "Religion",
+        "RELIGION / Taoism (see also PHILOSOPHY / Taoist)",
+        "Philosophy, taoist",
+        "PHILOSOPHY / Taoist"
+      ],
+      "_version_": 1759846315354750981
+    },
+    {
+      "key": "OL10006620A",
+      "type": "author",
+      "name": "Lao Tz\u00fa",
+      "top_work": "Tao Te Ching",
+      "work_count": 16,
+      "top_subjects": [
+        "Taoism",
+        "Religion",
+        "Poetry (poetic works by one author)",
+        "Philosophy, asian",
+        "Philosophy of mind",
+        "Philosophy"
+      ],
+      "_version_": 1759808000801898500
+    },
+    {
+      "key": "OL4490678A",
+      "type": "author",
+      "name": "Laozi",
+      "alternate_names": [
+        "\u8001\u5b50",
+        "Lao Tse",
+        "Lao-Tzu",
+        "Lao Zi",
+        "Lao-Tsu",
+        "Laotze",
+        "Laocius",
+        "Laotse",
+        "Lao Tze",
+        "Lao-tseu",
+        "Lao Tseu",
+        "Lao Tzu",
+        "Lao-tse",
+        "Lao-tzu"
+      ],
+      "birth_date": "c. 604 BC",
+      "top_work": "The Sayings of Lao Tzu\u0308",
+      "work_count": 321,
+      "top_subjects": [
+        "Taoism",
+        "Laozi",
+        "Chinese Philosophy",
+        "Taoist philosophy",
+        "Laozi, dao de jing",
+        "Philosophy",
+        "Dao de jing (Laozi)",
+        "Taoist Philosophy",
+        "Philosophy, chinese",
+        "Tao\u00efsme"
+      ],
+      "_version_": 1759832737858977824
+    },
+    {
+      "key": "OL7799240A",
+      "type": "author",
+      "name": "Lao-Tzu",
+      "top_work": "Tao Te Ching",
+      "work_count": 5,
+      "top_subjects": [
+        "Religion"
+      ],
+      "_version_": 1759846387116146697
+    },
+    {
+      "key": "OL8017764A",
+      "type": "author",
+      "name": "Lao-tzu",
+      "top_work": "Wollen ohne Wahl",
+      "work_count": 2,
+      "top_subjects": [
+        "Taoism"
+      ],
+      "_version_": 1759847337194160134
+    },
+    {
+      "key": "OL9945597A",
+      "type": "author",
+      "name": "LAO TZU",
+      "top_work": "Tao Te Ching",
+      "work_count": 1,
+      "_version_": 1759854901562703875
+    },
+    {
+      "key": "OL7982814A",
+      "type": "author",
+      "name": "Lao - Tzu",
+      "top_work": "The Tao Te Ching",
+      "work_count": 1,
+      "_version_": 1759847347110543364
+    },
+    {
+      "key": "OL8420496A",
+      "type": "author",
+      "name": "Lao tzu",
+      "top_work": "TAO-TE CHING by Lao-Tzu",
+      "work_count": 1,
+      "_version_": 1759848836713414659
+    },
+    {
+      "key": "OL12529417A",
+      "type": "author",
+      "name": "LAO TZ\u00da",
+      "work_count": 0,
+      "_version_": 1760426445395460096
+    },
+    {
+      "key": "OL10846233A",
+      "type": "author",
+      "name": "Lao Lao Tzu",
+      "top_work": "Tao Te Ching",
+      "work_count": 2,
+      "_version_": 1759811222460432389
+    },
+    {
+      "key": "OL11106844A",
+      "type": "author",
+      "name": "Laozi Lao Tzu",
+      "top_work": "Tao Te Ching",
+      "work_count": 1,
+      "_version_": 1759812626429247489
+    },
+    {
+      "key": "OL9957383A",
+      "type": "author",
+      "name": "Lao Tzu Laozi",
+      "top_work": "Dao De Jing, or the Tao Te Ching",
+      "work_count": 1,
+      "_version_": 1759855010497167366
+    },
+    {
+      "key": "OL9399433A",
+      "type": "author",
+      "name": "Lao-Tzu Allan-Blitz",
+      "top_work": "Until We Are Lost",
+      "work_count": 1,
+      "_version_": 1759852520761458690
+    },
+    {
+      "key": "OL11414393A",
+      "type": "author",
+      "name": "Lao Tzu;D. C. Lau",
+      "top_work": "Tao Te Ching Reprint edition by Tzu, Lao, Lau, D. C. (1964) Paperback",
+      "work_count": 1,
+      "_version_": 1759814071762288648
+    },
+    {
+      "key": "OL11490791A",
+      "type": "author",
+      "name": "Wing-Tsit Chan; Lao Tzu",
+      "top_work": "The Way of Lao-Tzu",
+      "work_count": 1,
+      "_version_": 1759814243126870020
+    },
+    {
+      "key": "OL9899003A",
+      "type": "author",
+      "name": "Levent Ozsar, Lao Tzu, Munevver Ozgen",
+      "top_work": "Tao Te King",
+      "work_count": 1,
+      "_version_": 1759854668729548803
+    },
+    {
+      "key": "OL10812730A",
+      "type": "author",
+      "name": "Lao Tzu, Friedrich Nietzsche, James Allen, Kahlil Gibran",
+      "top_work": "Most Influential Classics of All Time",
+      "work_count": 1,
+      "_version_": 1759810819322806275
+    },
+    {
+      "key": "OL7827089A",
+      "type": "author",
+      "name": "Tzu Lao",
+      "top_work": "Tao Te Ching",
+      "work_count": 4,
+      "top_subjects": [
+        "Taoism",
+        "Religion",
+        "Laozi, dao de jing"
+      ],
+      "_version_": 1759846538341777409
+    }
+  ]
+}
