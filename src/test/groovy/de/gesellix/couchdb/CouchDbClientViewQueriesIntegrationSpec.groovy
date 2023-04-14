@@ -1,6 +1,5 @@
 package de.gesellix.couchdb
 
-
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import de.gesellix.couchdb.model.MapWithDocumentId
@@ -60,7 +59,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     createDocuments()
   }
 
-  def cleanupSpec() {
+  void cleanupSpec() {
     if (couchdbContainer.isRunning()) {
       !client.containsDb(database) || client.deleteDb(database)
     }
@@ -83,7 +82,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     client.updateBulk(database, quotes)
   }
 
-  def "debug info"() {
+  void "debug info"() {
     expect:
     String allDocs = "${client.getCurlCommandLine("/" + database + "/_all_docs?limit=2&include_docs=true")}"
     String quotesByAuthor = "${client.getCurlCommandLine("/" + database + "/_design/${database.capitalize()}/_view/quotes-by-author?limit=2&include_docs=true&reduce=false")}"
@@ -93,7 +92,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     println(quotesByAuthorReduced)
   }
 
-  def "query view with a single key"() {
+  void "query view with a single key"() {
     given:
     def author = "Johann Wolfgang von Goethe"
     def expectedQuote = "In the end we retain from our studies only that which we practically apply."
@@ -109,7 +108,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     result.find { it.text == expectedQuote }
   }
 
-  def "query view with a url-incompatible key"() {
+  void "query view with a url-incompatible key"() {
     given:
     String key = "Here, comes the sun: ü?ß & Co / ([{}])"
 
@@ -120,7 +119,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     result.empty
   }
 
-  def "query view with a long key"() {
+  void "query view with a long key"() {
     given:
     int length = 10000
     String author = "a-long-one: ${(1..length).collect { "x" }.join()}"
@@ -153,7 +152,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     client.delete(database, createdDoc._id as String, createdDoc._rev as String)
   }
 
-  def "query view with multiple keys"() {
+  void "query view with multiple keys"() {
     given:
     def author = "Johann Wolfgang von Goethe"
     def expectedQuote = "In the end we retain from our studies only that which we practically apply."
@@ -169,7 +168,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     result.find { it.text == expectedQuote }
   }
 
-  def "query view with multiple long keys"() {
+  void "query view with multiple long keys"() {
     given:
     int length = 10000
     String author1 = "a-long-one1: ${(1..length).collect { "x" }.join()}"
@@ -205,7 +204,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     client.delete(database, createdDoc2._id as String, createdDoc2._rev as String)
   }
 
-  def "page /_all_docs"() {
+  void "page /_all_docs"() {
     given:
     def pageSize = 11
     def resultType = Types.newParameterizedType(
@@ -227,7 +226,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     page1.rows.last().docId == page2.rows.first().docId
   }
 
-  def "page /_all_docs should not remove _design/ documents"() {
+  void "page /_all_docs should not remove _design/ documents"() {
     given:
     def approximateDocumentCount = 1700
     def resultType = Types.newParameterizedType(
@@ -246,7 +245,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
         .findAll { it.startsWith("_design/") }.size() == 1
   }
 
-  def "page /_view/a-view, reduce=false"() {
+  void "page /_view/a-view, reduce=false"() {
     given:
     String designDocId = "_design/${database.capitalize()}"
     def pageSize = 11
@@ -274,7 +273,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     page1.rows.last().docId == page2.rows.first().docId
   }
 
-  def "page /_view/a-view, reduce=true"() {
+  void "page /_view/a-view, reduce=true"() {
     given:
     String designDocId = "_design/${database.capitalize()}"
     def pageSize = 11
@@ -297,7 +296,7 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
     page1.rows.last().getKey() == page2.rows.first().getKey()
   }
 
-  def "page /_view/a-view a long key, reduce=true"() {
+  void "page /_view/a-view a long key, reduce=true"() {
     given:
     String designDocId = "_design/${database.capitalize()}"
     def pageSize = 11
