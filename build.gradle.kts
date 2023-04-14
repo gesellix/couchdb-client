@@ -171,6 +171,7 @@ publishing {
 signing {
   val signingKey: String? by project
   val signingPassword: String? by project
+  setRequired( { gradle.taskGraph.hasTask("uploadArchives") })
   useInMemoryPgpKeys(signingKey, signingPassword)
   sign(publishing.publications[publicationName])
 }
