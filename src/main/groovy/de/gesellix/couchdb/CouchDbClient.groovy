@@ -479,7 +479,11 @@ class CouchDbClient {
 
     Response response = client.newCall(request).execute()
     if (!response.successful) {
-      log.error("error {}", response.message())
+      try {
+        log.error("error {}/{}, details: {}", response.code(), response.message(), response.body().string())
+      } catch (Exception ignored) {
+        log.error("error {}/{}", response.code(), response.message())
+      }
       throw new IllegalStateException("bulk update failed")
     }
 
