@@ -4,9 +4,9 @@ import de.gesellix.couchdb.model.MapWithRowReference;
 
 import java.util.Map;
 
-public class RowWithAuthor extends MapWithRowReference<String, Object> {
+public class RowWithStringKey extends MapWithRowReference<String, Object> {
 
-  public RowWithAuthor(Map<String, Object> delegate) {
+  public RowWithStringKey(Map<String, Object> delegate) {
     super(delegate);
   }
 

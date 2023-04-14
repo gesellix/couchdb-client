@@ -2,8 +2,10 @@ package de.gesellix.couchdb.moshi
 
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
-import de.gesellix.couchdb.RowWithAuthor
-import de.gesellix.couchdb.RowWithAuthorAdapter
+import de.gesellix.couchdb.RowWithStringKey
+import de.gesellix.couchdb.RowWithStringKeyAdapter
+import de.gesellix.couchdb.RowWithComplexKey
+import de.gesellix.couchdb.RowWithComplexKeyAdapter
 import de.gesellix.couchdb.model.MapWithDocumentId
 import de.gesellix.couchdb.model.ViewQueryResponse
 import spock.lang.Specification
@@ -104,15 +106,51 @@ class MoshiJsonTest extends Specification {
     }
     """
 
-    Type resultType = Types.newParameterizedType(MoshiReducedViewQueryResponse, String, RowWithAuthor)
+    Type resultType = Types.newParameterizedType(MoshiReducedViewQueryResponse, String, RowWithStringKey)
 
     when:
-    MoshiReducedViewQueryResponse<String, RowWithAuthor> parsed = new MoshiJson(new Moshi.Builder()
-        .add(new RowWithAuthorAdapter()))
+    MoshiReducedViewQueryResponse<String, RowWithStringKey> parsed = new MoshiJson(new Moshi.Builder()
+        .add(new RowWithStringKeyAdapter()))
         .consume(new ByteArrayInputStream(body.bytes), resultType)
 
     then:
     parsed.rows.size() == 11
-    parsed.rows[0] == new RowWithAuthor([key: "A. A. Milne", value: true])
+    parsed.rows[0] == new RowWithStringKey([key: "A. A. Milne", value: true])
+  }
+
+  def "should parse a MoshiReducedViewQueryResponse with a complex key"() {
+    given:
+    String body = """
+    {
+      "rows": [
+        {"key":["2023-02-02", "A. A. Milne"], "value":true},
+        {"key":["2023-02-02", "A. Powell Davies"], "value":true},
+        {"key":["2023-02-02", "Abernathy"], "value":true},
+        {"key":["2023-02-02", "Abraham Lincoln"], "value":true},
+        {"key":["2023-02-02", "Abraham Maslow"], "value":true},
+        {"key":["2023-02-02", "Aesop"], "value":true},
+        {"key":["2023-02-02", "African proverb"], "value":true},
+        {"key":["2023-02-02", "Agatha Christie"], "value":true},
+        {"key":["2023-02-02", "Ajahn Chah"], "value":true},
+        {"key":["2023-02-02", "Alan Cohen"], "value":true},
+        {"key":["2023-02-02", "Alan Watts"], "value":true}
+      ]
+    }
+    """
+
+    Type resultType = Types.newParameterizedType(MoshiReducedViewQueryResponse,
+        Types.newParameterizedType(List, String),
+        RowWithComplexKey)
+
+    when:
+    MoshiReducedViewQueryResponse<List<String>, RowWithComplexKey> parsed = new MoshiJson(new Moshi.Builder()
+        .add(new RowWithComplexKeyAdapter()))
+        .consume(new ByteArrayInputStream(body.bytes), resultType)
+
+    then:
+    parsed.rows.size() == 11
+    parsed.rows[0] instanceof RowWithComplexKey
+    ((RowWithComplexKey) parsed.rows[0]).getKey() == ["2023-02-02", "A. A. Milne"]
+    ((RowWithComplexKey) parsed.rows[0]).get("value") == true
   }
 }
