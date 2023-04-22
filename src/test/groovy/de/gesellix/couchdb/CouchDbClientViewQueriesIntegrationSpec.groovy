@@ -78,16 +78,16 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
   void prepareViews() {
     quotesDatabase = "test-db-quotes-${UUID.randomUUID()}"
     client.createDb(quotesDatabase)
-    client.createFindByPropertyView(quotesDatabase, "author")
-    client.createView(quotesDatabase,
+    client.createOrUpdateFindByPropertyView(quotesDatabase, "author")
+    client.createOrUpdateView(quotesDatabase,
         "quotes-by-author",
         "function(doc) { if (doc['author']) { emit(doc['author'], doc._id) } }",
         "function(keys, values, rereduce) { return true }")
 
     authorsDatabase = "test-db-authors-${UUID.randomUUID()}"
     client.createDb(authorsDatabase)
-    client.createFindByPropertyView(authorsDatabase, "name")
-    client.createView(authorsDatabase,
+    client.createOrUpdateFindByPropertyView(authorsDatabase, "name")
+    client.createOrUpdateView(authorsDatabase,
         "top-work-by-author",
         "function(doc) { if (doc['name'] && doc['top_work']) { emit([doc['top_work'], doc['name']], 1) } }",
         "_sum")
