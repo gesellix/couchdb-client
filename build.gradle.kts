@@ -202,7 +202,9 @@ nexusPublishing {
 //    }
 
 tasks.wrapper {
-  gradleVersion = "8.0.1"
+// https://gradle.org/releases/
+  gradleVersion = "8.1.1"
   distributionType = Wrapper.DistributionType.BIN
-  distributionSha256Sum = "1b6b558be93f29438d3df94b7dfee02e794b94d9aca4611a92cdb79b6b88e909"
+// https://gradle.org/release-checksums/
+  distributionSha256Sum = "e111cb9948407e26351227dabce49822fb88c37ee72f1d1582a69c68af2e702f"
 }
