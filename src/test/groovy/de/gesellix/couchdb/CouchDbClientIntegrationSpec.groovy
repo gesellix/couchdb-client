@@ -70,9 +70,9 @@ class CouchDbClientIntegrationSpec extends Specification {
     client.containsDb(database)
   }
 
-  def "create view"() {
+  def "create or update view"() {
     when:
-    def result = client.createFindByPropertyView(database, "a-property")
+    def result = client.createOrUpdateFindByPropertyView(database, "a-property")
 
     then:
     result._id == "_design/${database.capitalize()}"
@@ -228,7 +228,7 @@ class CouchDbClientIntegrationSpec extends Specification {
     when:
     def viewMap = "function(doc) { if (doc['title']) { emit(doc['title'], doc._id) } }"
     def viewReduce = "function(keys, values, rereduce) { return true }"
-    def result = client.createView(database, "suggestions", viewMap, viewReduce)
+    def result = client.createOrUpdateView(database, "suggestions", viewMap, viewReduce)
 
     then:
     result._id == "_design/${database.capitalize()}"

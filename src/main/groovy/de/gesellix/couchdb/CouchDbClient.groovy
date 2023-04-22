@@ -579,22 +579,22 @@ class CouchDbClient {
     return result
   }
 
-  Map createFindAllDocsView(String db) {
+  Map createOrUpdateFindAllDocsView(String db) {
     String findAll = "function(doc) { emit(null, doc._id) }"
-    return createView(db, "all", findAll, null)
+    return createOrUpdateView(db, "all", findAll, null)
   }
 
-  Map createFindByPropertyView(String db, String propertyName) {
+  Map createOrUpdateFindByPropertyView(String db, String propertyName) {
     String findByProperty = "function(doc) { if (doc['${propertyName}']) { emit(doc['${propertyName}'], doc._id) } }"
-    return createView(db, "by_${propertyName}", findByProperty, null)
+    return createOrUpdateView(db, "by_${propertyName}", findByProperty, null)
   }
 
-  Map createView(String db, String viewName, String mapFunction, String reduceFunction) {
+  Map createOrUpdateView(String db, String viewName, String mapFunction, String reduceFunction) {
     String designDocId = "_design/${db.capitalize()}"
-    return createView(db, designDocId, viewName, mapFunction, reduceFunction)
+    return createOrUpdateView(db, designDocId, viewName, mapFunction, reduceFunction)
   }
 
-  Map createView(String db, String designDocId, String viewName, String mapFunction, String reduceFunction) {
+  Map createOrUpdateView(String db, String designDocId, String viewName, String mapFunction, String reduceFunction) {
     Map view = [:]
     if (mapFunction) {
       view['map'] = mapFunction
