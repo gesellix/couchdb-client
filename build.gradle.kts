@@ -17,7 +17,7 @@ repositories {
 }
 
 val groovyVersion = "4.0.15"
-val kotlinVersion = "1.6.20"
+val kotlinVersion = "1.9.10"
 
 dependencies {
   constraints {
@@ -28,7 +28,7 @@ dependencies {
       implementation(it) {
         version {
           strictly("[3,4)")
-          prefer("3.3.0")
+          prefer("3.6.0")
         }
       }
     }
@@ -37,7 +37,7 @@ dependencies {
   implementation("org.apache.groovy:groovy-json:${groovyVersion}")
 
   implementation("org.slf4j:slf4j-api:2.0.9")
-  testRuntimeOnly("ch.qos.logback:logback-classic:1.2.11")
+  testRuntimeOnly("ch.qos.logback:logback-classic:1.3.11")
 
   testImplementation("org.spockframework:spock-core:2.3-groovy-4.0")
   testImplementation("cglib:cglib-nodep:3.3.0")
