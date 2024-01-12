@@ -17,7 +17,7 @@ repositories {
 }
 
 val groovyVersion = "4.0.17"
-val kotlinVersion = "1.9.10"
+val kotlinVersion = "1.9.22"
 
 dependencies {
   constraints {
@@ -28,7 +28,7 @@ dependencies {
       implementation(it) {
         version {
           strictly("[3,4)")
-          prefer("3.6.0")
+          prefer("3.7.0")
         }
       }
     }
@@ -37,7 +37,7 @@ dependencies {
   implementation("org.apache.groovy:groovy-json:${groovyVersion}")
 
   implementation("org.slf4j:slf4j-api:2.0.11")
-  testRuntimeOnly("ch.qos.logback:logback-classic:1.3.11")
+  testRuntimeOnly("ch.qos.logback:logback-classic:1.3.14")
 
   testImplementation("org.spockframework:spock-core:2.3-groovy-4.0")
   testImplementation("cglib:cglib-nodep:3.3.0")
@@ -72,7 +72,7 @@ configurations.all {
           if (it is ModuleComponentSelector && it.group == "org.codehaus.groovy") {
             logger.lifecycle("substituting $it to groupId 'org.apache.groovy'")
             useTarget(
-              "org.apache.groovy:${it.module}:${it.version}",
+              "org.apache.groovy:${it.module}:${groovyVersion}",
               "Changed Maven coordinates since Groovy 4"
             )
           }
