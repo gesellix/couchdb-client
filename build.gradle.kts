@@ -24,7 +24,7 @@ dependencies {
     listOf(
       "com.squareup.okio:okio",
       "com.squareup.okio:okio-jvm"
-    ).onEach {
+    ).forEach {
       implementation(it) {
         version {
           strictly("[3,4)")
