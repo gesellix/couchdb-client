@@ -41,8 +41,8 @@ dependencies {
 
   testImplementation("org.spockframework:spock-core:2.3-groovy-4.0")
   testImplementation("cglib:cglib-nodep:3.3.0")
-  testImplementation("com.jayway.jsonpath:json-path:2.8.0")
-  testImplementation("com.jayway.jsonpath:json-path-assert:2.8.0")
+  testImplementation("com.jayway.jsonpath:json-path:2.9.0")
+  testImplementation("com.jayway.jsonpath:json-path-assert:2.9.0")
   testImplementation("org.testcontainers:spock:1.19.3")
 
   implementation("com.squareup.okhttp3:okhttp:4.12.0")
