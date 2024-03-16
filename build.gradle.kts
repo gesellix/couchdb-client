@@ -17,7 +17,7 @@ repositories {
 }
 
 val groovyVersion = "4.0.19"
-val kotlinVersion = "1.9.22"
+val kotlinVersion = "1.9.23"
 
 dependencies {
   constraints {
@@ -28,7 +28,7 @@ dependencies {
       implementation(it) {
         version {
           strictly("[3,4)")
-          prefer("3.8.0")
+          prefer("3.9.0")
         }
       }
     }
