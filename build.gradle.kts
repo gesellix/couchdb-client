@@ -55,7 +55,7 @@ val dependencyVersions = listOf(
   "org.jetbrains:annotations:24.1.0",
   "org.slf4j:slf4j-api:2.0.12",
   "org.spockframework:spock-core:2.3-groovy-4.0",
-  "org.ow2.asm:asm:9.6",
+  "org.ow2.asm:asm:9.7",
 )
 
 val dependencyVersionsByGroup = mapOf(
