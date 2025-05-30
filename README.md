@@ -16,7 +16,7 @@ repositories {
   mavenCentral()
 }
 dependencies {
-  implementation("de.gesellix:couchdb-client:2021-03-02T23-21-53")
+  implementation("de.gesellix:couchdb-client:<version>")
 }
 ````
 
