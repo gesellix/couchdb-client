@@ -9,6 +9,7 @@ import de.gesellix.couchdb.moshi.MoshiAllDocsViewQueryResponse
 import de.gesellix.couchdb.moshi.MoshiJson
 import de.gesellix.couchdb.moshi.MoshiReducedViewQueryResponse
 import de.gesellix.couchdb.moshi.MoshiViewQueryResponse
+import de.gesellix.couchdb.moshi.MoshiViewQueryResponseRow
 import de.gesellix.couchdb.moshi.NestedRevisionAdapter
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.Wait
@@ -371,6 +372,33 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
 
     cleanup:
     client.delete(quotesDatabase, createdDoc._id as String, createdDoc._rev as String)
+  }
+
+  void "page /_view/a-view with a complex key, reduce=false"() {
+    given:
+    String designDocId = "_design/${authorsDatabase.capitalize()}"
+    def resultType = Types.newParameterizedType(
+        MoshiViewQueryResponse,
+        Types.newParameterizedType(List, String), Integer, Types.newParameterizedType(MapWithDocumentId, Object))
+    def topWork = "Until We Are Lost"
+    def author = "Lao-Tzu Allan-Blitz"
+
+    when:
+    MoshiViewQueryResponse<List<String>, Integer, MapWithDocumentId<Object>> page = client.queryPage(
+        resultType, authorsDatabase, designDocId, "top-work-by-author", false,
+        [topWork, author], null,
+        null, null,
+        false, false,
+        [topWork, [:]], null,
+        true)
+
+    then:
+    page.rows.size() == 1
+    and:
+    page.rows.first() instanceof MoshiViewQueryResponseRow
+    and:
+    ((MoshiViewQueryResponseRow) page.rows.first()).key == [topWork, author]
+    ((MoshiViewQueryResponseRow) page.rows.first()).value == 1
   }
 
   void "page /_view/a-view with a complex key, reduce=true"() {
