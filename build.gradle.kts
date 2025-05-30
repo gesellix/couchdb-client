@@ -217,5 +217,5 @@ tasks.wrapper {
   gradleVersion = "8.14.1"
   distributionType = Wrapper.DistributionType.BIN
 // https://gradle.org/release-checksums/
-  distributionSha256Sum = "9d926787066a081739e8200858338b4a69e837c3a821a33aca9db09dd4a41026"
+  distributionSha256Sum = "845952a9d6afa783db70bb3b0effaae45ae5542ca2bb7929619e8af49cb634cf"
 }
