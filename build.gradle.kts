@@ -132,8 +132,7 @@ publishing {
   repositories {
     maven {
       name = "GitHubPackages"
-      url =
-        uri("https://maven.pkg.github.com/${property("github.package-registry.owner")}/${property("github.package-registry.repository")}")
+      url = uri("https://maven.pkg.github.com/${property("github.package-registry.owner")}/${property("github.package-registry.repository")}")
       credentials {
         username = System.getenv("GITHUB_ACTOR") ?: findProperty("github.package-registry.username")
         password = System.getenv("GITHUB_TOKEN") ?: findProperty("github.package-registry.password")
@@ -187,10 +186,8 @@ nexusPublishing {
     if (!isSnapshot) {
       sonatype {
         // 'sonatype' is pre-configured for Sonatype Nexus (OSSRH) which is used for The Central Repository
-        stagingProfileId.set(
-          System.getenv("SONATYPE_STAGING_PROFILE_ID")
-            ?: findProperty("sonatype.staging.profile.id")
-        ) //can reduce execution time by even 10 seconds
+        //can reduce execution time by even 10 seconds
+        stagingProfileId.set(System.getenv("SONATYPE_STAGING_PROFILE_ID") ?: findProperty("sonatype.staging.profile.id"))
         username.set(System.getenv("SONATYPE_USERNAME") ?: findProperty("sonatype.username"))
         password.set(System.getenv("SONATYPE_PASSWORD") ?: findProperty("sonatype.password"))
         nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
