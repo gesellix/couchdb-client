@@ -383,9 +383,8 @@ class CouchDbClientViewQueriesIntegrationSpec extends Specification {
 
     when:
     MoshiReducedViewQueryResponse<List<String>, RowWithComplexKey> page = client.queryPage(
-        resultType, authorsDatabase,
-        designDocId, "top-work-by-author",
-        true, [topWork, author], null,
+        resultType, authorsDatabase, designDocId, "top-work-by-author", true,
+        [topWork, author], null,
         null, null,
         false, false,
         [topWork, [:]], null,
