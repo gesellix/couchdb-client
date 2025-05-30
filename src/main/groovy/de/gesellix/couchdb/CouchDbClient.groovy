@@ -420,7 +420,7 @@ class CouchDbClient {
       throw new IllegalStateException("error creating document")
     }
 
-    Map createdDocument = json.decodeDocument(documentAsJson, Map.class)
+    Map createdDocument = json.decodeDocument(documentAsJson, Map)
     createdDocument['_id'] = result.id
     createdDocument['_rev'] = result.rev
     return createdDocument
@@ -458,7 +458,7 @@ class CouchDbClient {
       throw new IllegalStateException("error updating document")
     }
 
-    Map updatedDocument = json.decodeDocument(documentAsJson, Map.class)
+    Map updatedDocument = json.decodeDocument(documentAsJson, Map)
     updatedDocument['_rev'] = result.rev
     return updatedDocument
   }

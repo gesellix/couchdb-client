@@ -17,8 +17,7 @@ import java.time.LocalDate
 class CouchDbClientIntegrationSpec extends Specification {
 
   static final int COUCHDB_PORT = 5984
-//    static final String COUCHDB_IMAGE = "couchdb:1.7.1"
-  static final String COUCHDB_IMAGE = "couchdb:3.3.3"
+  static final String COUCHDB_IMAGE = "couchdb:3.5.0"
   static GenericContainer couchdbContainer = new GenericContainer(COUCHDB_IMAGE)
       .withEnv([
           COUCHDB_USER    : System.env['couchdb.username'] as String ?: "admin",
