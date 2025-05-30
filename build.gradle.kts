@@ -13,6 +13,7 @@ plugins {
 }
 
 repositories {
+//  mavenLocal()
   mavenCentral()
 }
 
@@ -43,6 +44,7 @@ dependencies {
   testImplementation("cglib:cglib-nodep:3.3.0")
   testImplementation("com.jayway.jsonpath:json-path:2.9.0")
   testImplementation("com.jayway.jsonpath:json-path-assert:2.9.0")
+//  testImplementation("org.testcontainers:spock:unspecified")
   testImplementation("org.testcontainers:spock:1.21.1")
 
   implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -99,6 +101,8 @@ java {
 
 tasks.withType<Test> {
   useJUnitPlatform()
+//  environment("TESTCONTAINERS_RYUK_CONTAINER_IMAGE" to "ghcr.io/gesellix/moby-ryuk:20240222.1")
+//  environment("TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED" to "false")
 }
 
 val javadocJar by tasks.registering(Jar::class) {
@@ -121,13 +125,15 @@ artifacts {
 fun findProperty(s: String) = project.findProperty(s) as String?
 
 val isSnapshot = project.version == "unspecified"
-val artifactVersion = if (!isSnapshot) project.version as String else SimpleDateFormat("yyyy-MM-dd\'T\'HH-mm-ss").format(Date())!!
+val artifactVersion =
+  if (!isSnapshot) project.version as String else SimpleDateFormat("yyyy-MM-dd\'T\'HH-mm-ss").format(Date())!!
 val publicationName = "couchdbClient"
 publishing {
   repositories {
     maven {
       name = "GitHubPackages"
-      url = uri("https://maven.pkg.github.com/${property("github.package-registry.owner")}/${property("github.package-registry.repository")}")
+      url =
+        uri("https://maven.pkg.github.com/${property("github.package-registry.owner")}/${property("github.package-registry.repository")}")
       credentials {
         username = System.getenv("GITHUB_ACTOR") ?: findProperty("github.package-registry.username")
         password = System.getenv("GITHUB_TOKEN") ?: findProperty("github.package-registry.password")
@@ -171,7 +177,7 @@ publishing {
 signing {
   val signingKey: String? by project
   val signingPassword: String? by project
-  setRequired( { gradle.taskGraph.hasTask("uploadArchives") })
+  setRequired({ gradle.taskGraph.hasTask("uploadArchives") })
   useInMemoryPgpKeys(signingKey, signingPassword)
   sign(publishing.publications[publicationName])
 }
@@ -181,9 +187,14 @@ nexusPublishing {
     if (!isSnapshot) {
       sonatype {
         // 'sonatype' is pre-configured for Sonatype Nexus (OSSRH) which is used for The Central Repository
-        stagingProfileId.set(System.getenv("SONATYPE_STAGING_PROFILE_ID") ?: findProperty("sonatype.staging.profile.id")) //can reduce execution time by even 10 seconds
+        stagingProfileId.set(
+          System.getenv("SONATYPE_STAGING_PROFILE_ID")
+            ?: findProperty("sonatype.staging.profile.id")
+        ) //can reduce execution time by even 10 seconds
         username.set(System.getenv("SONATYPE_USERNAME") ?: findProperty("sonatype.username"))
         password.set(System.getenv("SONATYPE_PASSWORD") ?: findProperty("sonatype.password"))
+        nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
+        snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
       }
     }
   }
@@ -203,7 +214,7 @@ nexusPublishing {
 
 tasks.wrapper {
 // https://gradle.org/releases/
-  gradleVersion = "8.5"
+  gradleVersion = "8.14.1"
   distributionType = Wrapper.DistributionType.BIN
 // https://gradle.org/release-checksums/
   distributionSha256Sum = "9d926787066a081739e8200858338b4a69e837c3a821a33aca9db09dd4a41026"
