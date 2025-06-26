@@ -45,7 +45,7 @@ dependencies {
   testImplementation("com.jayway.jsonpath:json-path:2.9.0")
   testImplementation("com.jayway.jsonpath:json-path-assert:2.9.0")
 //  testImplementation("org.testcontainers:spock:unspecified")
-  testImplementation("org.testcontainers:spock:1.21.1")
+  testImplementation("org.testcontainers:spock:1.21.2")
 
   implementation("com.squareup.okhttp3:okhttp:4.12.0")
   implementation("com.squareup.moshi:moshi:1.15.2")
