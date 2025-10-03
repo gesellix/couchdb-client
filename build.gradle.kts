@@ -54,7 +54,7 @@ dependencies {
 val dependencyVersions = listOf(
   "com.squareup.okio:okio:3.16.0",
   "net.java.dev.jna:jna:5.18.1",
-  "org.jetbrains:annotations:26.0.2",
+  "org.jetbrains:annotations:26.0.2-1",
   "org.slf4j:slf4j-api:2.0.17",
   "org.spockframework:spock-core:2.3-groovy-4.0",
   "org.ow2.asm:asm:9.8",
