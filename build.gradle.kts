@@ -47,7 +47,7 @@ dependencies {
 //  testImplementation("org.testcontainers:spock:unspecified")
   testImplementation("org.testcontainers:spock:1.21.3")
 
-  implementation("com.squareup.okhttp3:okhttp:4.12.0")
+  implementation("com.squareup.okhttp3:okhttp:5.2.0")
   implementation("com.squareup.moshi:moshi:1.15.2")
 }
 
