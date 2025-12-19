@@ -40,7 +40,7 @@ dependencies {
   implementation("org.slf4j:slf4j-api:2.0.17")
   testRuntimeOnly("ch.qos.logback:logback-classic:1.3.14")
 
-  testImplementation("org.spockframework:spock-core:2.3-groovy-4.0")
+  testImplementation("org.spockframework:spock-core:2.4-groovy-5.0")
   testImplementation("cglib:cglib-nodep:3.3.0")
   testImplementation("com.jayway.jsonpath:json-path:2.9.0")
   testImplementation("com.jayway.jsonpath:json-path-assert:2.9.0")
@@ -56,7 +56,7 @@ val dependencyVersions = listOf(
   "net.java.dev.jna:jna:5.18.1",
   "org.jetbrains:annotations:26.0.2-1",
   "org.slf4j:slf4j-api:2.0.17",
-  "org.spockframework:spock-core:2.3-groovy-4.0",
+  "org.spockframework:spock-core:2.4-groovy-5.0",
   "org.ow2.asm:asm:9.9.1",
 )
 
