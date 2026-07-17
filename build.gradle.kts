@@ -37,7 +37,7 @@ dependencies {
   implementation("org.apache.groovy:groovy:${groovyVersion}")
   implementation("org.apache.groovy:groovy-json:${groovyVersion}")
 
-  implementation("org.slf4j:slf4j-api:2.0.17")
+  implementation("org.slf4j:slf4j-api:2.0.18")
   testRuntimeOnly("ch.qos.logback:logback-classic:1.3.14")
 
   testImplementation("org.spockframework:spock-core:2.3-groovy-4.0")
@@ -55,7 +55,7 @@ val dependencyVersions = listOf(
   "com.squareup.okio:okio:3.17.0",
   "net.java.dev.jna:jna:5.18.1",
   "org.jetbrains:annotations:26.0.2-1",
-  "org.slf4j:slf4j-api:2.0.17",
+  "org.slf4j:slf4j-api:2.0.18",
   "org.spockframework:spock-core:2.3-groovy-4.0",
   "org.ow2.asm:asm:9.9.1",
 )
