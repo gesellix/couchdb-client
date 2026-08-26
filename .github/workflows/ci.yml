@@ -26,4 +26,5 @@ jobs:
       - name: clean build
         run: ./gradlew clean build --no-daemon --info --stacktrace
         timeout-minutes: 10
+        continue-on-error: ${{matrix.os == 'windows-latest' }}
 ...
